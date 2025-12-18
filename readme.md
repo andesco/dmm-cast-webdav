@@ -15,7 +15,7 @@ Built on [Hono] to run as a Cloudflare Workers serverless function.
 **Media Player Artwork**: Infuse and other media players that support [overriding artwork](https://support.firecore.com/hc/en-us/articles/4405042929559-Overriding-Artwork-and-Metadata) can use the [artwork] served via WebDAV.
 
 <div align="center">
-    <p><img src="public/dmmcast/favorite-atv.png" width="300px"><br />
+    <p><img src="public/favorite-atv.png" width="300px"><br />
     DMM Cast
 </div>
 
@@ -46,7 +46,7 @@ Built on [Hono] to run as a Cloudflare Workers serverless function.
 
 4. Add the WebDAV endpoint to your media player:
    ```
-   https://dmm-cast-webdav.{user}.workers.dev/dmmcast/
+   https://dmm-cast-webdav.{user}.workers.dev/
    ```
 
 ## Usage
@@ -62,7 +62,7 @@ Cast media using [Debrid Media Manager][DMM Cast]:
 
 Add the WebDAV endpoint to your media player:
 
-- URL: `https://{hostname}/dmmcast/`
+- URL: `https://{hostname}/`
   - all DMM Cast media added within the last 7 days
 - username: `WEBDAV_USERNAME`
 - password: `WEBDAV_PASSWORD`
@@ -77,7 +77,7 @@ WebDAV directories and file lists are refreshed each time you access the service
 Infuse and other media players that support [overriding artwork](https://support.firecore.com/hc/en-us/articles/4405042929559-Overriding-Artwork-and-Metadata) can use the [artwork] served via WebDAV. Infuse defaults to using `favorite.png` and `favorite-atv.png`.
 
 <div align="center">
-    <p><img src="public/dmmcast/dmmcast-atv.png" width="300px"><br />
+    <p><img src="public/dmmcast-atv.png" width="300px"><br />
     DMM Cast
 </div>
 
@@ -94,7 +94,6 @@ Use `npx wrangler secret put {VARIABLE_NAME}` to set secrets.
 | `RD_ACCESS_TOKEN` | **required**: your Real-Debrid API access token | |
 | `WEBDAV_PASSWORD` | **required**: password for basic auth | |
 | `WEBDAV_USERNAME` | username for basic auth | `admin` |
-| `PUBLIC_URL` | public-facing URL for `.strm` files; only required for custom domains behind reverse proxies |  |
 
 ## Deploy Using Wrangler CLI
 
