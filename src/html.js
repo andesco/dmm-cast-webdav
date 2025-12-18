@@ -59,7 +59,7 @@ export function footer() {
     return `
 <footer style="margin-top: 2rem; text-align: center;">
     <small>
-        <a href="/">Home</a>
+        <a href="https://github.com/andesco/dmm-cast-webdav" target="_blank">andesco/dmm-cast-webdav</a>
     </small>
 </footer>`;
 }
