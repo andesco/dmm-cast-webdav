@@ -36,8 +36,7 @@ Built on [Hono] to run as a Cloudflare Workers serverless function.
    `WEBDAV_PASSWORD`
    
    Optional Text Variables:\
-   `PUBLIC_URL`
-   
+   `LOG_FORMAT`
 
 3. Verify your DMM Cast media is accessible:
    ```
