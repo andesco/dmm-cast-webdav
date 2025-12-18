@@ -113,7 +113,6 @@ app.get('/', async (c) => {
 		${statusHeader()}
 		${castedLinks && castedLinks.length > 0 ? `
 		<div class="status-info">
-			<h3>DMM Cast Links</h3>
 			<p><small>source: <a href="https://debridmediamanager.com/stremio/manage" target="_blank">debridmediamanager.com/stremio/manage</a></small><br />
 			   <small>WebDAV: <code>${hostname}/</code></small>
             </p>

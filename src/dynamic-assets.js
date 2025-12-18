@@ -1,36 +1,9 @@
-// Dynamic asset serving
-// - Node.js: Reads files directly from public/ directory
-// - Workers: Uses pre-bundled assets from public-assets.js
+// Dynamic asset serving for Cloudflare Workers
+// Uses pre-bundled assets from public-assets.js
 
 import { publicAssets, assetMetadata } from './public-assets.js';
 
-// Detect if we're in Node.js (has process.versions.node)
-const isNodeJS = typeof process !== 'undefined' && process.versions?.node;
-
-// Node.js filesystem imports (only loaded in Node.js)
-let fs, path, fileURLToPath, dirname;
-if (isNodeJS) {
-    const fsModule = await import('fs');
-    const pathModule = await import('path');
-    const urlModule = await import('url');
-    fs = fsModule;
-    path = pathModule;
-    fileURLToPath = urlModule.fileURLToPath;
-    dirname = pathModule.dirname;
-}
-
-// Get the public directory path (Node.js only) - computed lazily when needed
-let publicDir;
-const getPublicDir = () => {
-    if (!publicDir && isNodeJS) {
-        const __filename = fileURLToPath(import.meta.url);
-        const __dirname = dirname(__filename);
-        publicDir = path.join(__dirname, '../public');
-    }
-    return publicDir;
-};
-
-// Convert base64 to ArrayBuffer (Workers only)
+// Convert base64 to ArrayBuffer
 const base64ToBuffer = (base64) => {
     const binaryString = atob(base64);
     const bytes = new Uint8Array(binaryString.length);
@@ -40,9 +13,7 @@ const base64ToBuffer = (base64) => {
     return bytes.buffer;
 };
 
-// Pre-convert bundled assets to buffers (always, for Workers use)
-// Note: Even though this runs during build in Node.js, we need to populate
-// this so it's available when the bundle runs in the Workers environment
+// Pre-convert bundled assets to buffers
 const assetBuffers = {};
 Object.keys(publicAssets).forEach(path => {
     assetBuffers[path] = base64ToBuffer(publicAssets[path]);
@@ -64,32 +35,8 @@ const getMimeType = (filename) => {
     return mimeTypes[ext] || 'application/octet-stream';
 };
 
-// Serve file dynamically
+// Serve file from bundled assets
 export async function serveAsset(assetPath, env) {
-    // Runtime detection: check if we're in Workers (has caches global) or Node.js
-    const isWorkers = typeof caches !== 'undefined';
-    const hasFilesystem = !isWorkers && typeof fs !== 'undefined' && fs !== null;
-
-    // Node.js: Read from filesystem
-    if (hasFilesystem) {
-        try {
-            const filePath = path.join(getPublicDir(), assetPath);
-            const buffer = fs.readFileSync(filePath);
-            const stats = fs.statSync(filePath);
-
-            return new Response(buffer, {
-                headers: {
-                    'Content-Type': getMimeType(assetPath),
-                    'Cache-Control': 'public, max-age=31536000',
-                    'Content-Length': stats.size.toString(),
-                },
-            });
-        } catch (e) {
-            return null; // File not found
-        }
-    }
-
-    // Workers: Use bundled assets
     const buffer = assetBuffers[assetPath];
     const metadata = assetMetadata[assetPath];
 
@@ -110,47 +57,14 @@ export async function serveAsset(assetPath, env) {
 export async function getAssetsInDirectory(directory, env) {
     const prefix = directory ? `${directory}/` : '';
 
-    // Runtime detection: check if we're in Workers (has caches global) or Node.js
-    const isWorkers = typeof caches !== 'undefined';
-    const hasFilesystem = !isWorkers && typeof fs !== 'undefined' && fs !== null;
-
-    // Node.js: Read from filesystem
-    if (hasFilesystem) {
-        try {
-            const dirPath = path.join(getPublicDir(), directory || '');
-            const files = fs.readdirSync(dirPath);
-
-            return files
-                .filter(file => {
-                    // Skip .DS_Store files
-                    if (file === '.DS_Store') return false;
-
-                    const filePath = path.join(dirPath, file);
-                    return fs.statSync(filePath).isFile();
-                })
-                .map(file => {
-                    const filePath = path.join(dirPath, file);
-                    const stats = fs.statSync(filePath);
-                    return {
-                        name: file,
-                        size: stats.size,
-                        modified: stats.mtime.toISOString(),
-                        contentType: getMimeType(file),
-                    };
-                });
-        } catch (e) {
-            return []; // Directory not found
-        }
-    }
-
-    // Workers: Use bundled assets metadata
+    // Use bundled assets metadata
     return Object.keys(assetMetadata)
         .filter(assetPath => {
             const filename = assetPath.substring(prefix.length);
             // Skip .DS_Store files and ensure it's in the correct directory
             return assetPath.startsWith(prefix) &&
-                   !filename.includes('/') &&
-                   filename !== '.DS_Store';
+                !filename.includes('/') &&
+                filename !== '.DS_Store';
         })
         .map(assetPath => ({
             name: assetPath.substring(prefix.length),

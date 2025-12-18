@@ -4,6 +4,3 @@ compatibility_date = "2024-09-23"
 # account_id = ""
 workers_dev = true
 preview_urls = false
-
-[build]
-command = "npm run build:assets"
