@@ -1,0 +1,85 @@
+article {
+    margin-top: 2rem;
+}
+
+/* Status badge styles */
+.status-badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 1rem;
+    color: white;
+    font-weight: 600;
+    margin-bottom: 1rem;
+}
+
+.status-badge.success {
+    background: #43a047;
+    background-color: #43a047;
+}
+
+.status-badge.warning {
+    background: #fb8c00;
+    background-color: #fb8c00;
+}
+
+.status-badge.error {
+    background: #e53935;
+    background-color: #e53935;
+}
+
+code {
+    font-weight: normal;
+}
+
+ul {
+    list-style-type: disc;
+    padding-left: 1.5rem;
+}
+
+/* Custom styles for button alignment and width */
+.button-wrapper {
+    margin-bottom: 1rem;
+    /* Spacing between button groups */
+    display: flex;
+    /* Use flexbox for alignment of the button/form itself */
+    justify-content: flex-start;
+    /* Align the button/form to the left */
+}
+
+.button-wrapper form {
+    /* Ensure the form content (input and button) is handled well */
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    /* Take full width for containing elements */
+}
+
+.button-wrapper input[type="text"] {
+    max-width: 18.75rem;
+    /* Constrain the width of the input */
+    width: 100%;
+    /* Be fluid up to max-width */
+    margin-bottom: 0.5rem;
+    /* Space between input and button */
+}
+
+.button-wrapper button,
+.button-wrapper a[role="button"] {
+    max-width: 18.75rem;
+    /* Constrain the width of the buttons */
+    width: 100%;
+    /* Be fluid up to max-width */
+}
+
+/* Modern version of <nobr> */
+.nowrap {
+    white-space: nowrap !important;
+    display: inline-block;
+}
+
+/* On hover, links wrapping code should be underlined and blue like other links */
+a:hover code,
+a:focus code {
+    text-decoration: underline !important;
+    color: var(--pico-primary) !important;
+}

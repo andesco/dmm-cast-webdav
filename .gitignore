@@ -1,0 +1,43 @@
+# Environment variables
+.env
+.env.local
+wrangler.local.toml
+
+# Wrangler build artifacts
+.wrangler/
+
+# Dependencies
+node_modules/
+package-lock.json
+
+# Data directory (contains cache)
+data/
+data/*.json
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE & LLM
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.claude/
+CLAUDE.md
+CLAUDE*.md
+GEMINI.md
+GEMINI*.md
+
+# Environment variables (contains sensitive data)
+.dev.vars
+
+# Development
+.dev/
+.DS_Store

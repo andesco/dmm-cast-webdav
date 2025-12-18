@@ -1,0 +1,29 @@
+{
+  "name": "dmm-cast-webdav",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "WebDAV streaming service for Debrid Media Manager Cast links",
+  "main": "src/app.js",
+  "scripts": {
+    "build:assets": "node scripts/generate-assets.js",
+    "deploy": "wrangler deploy --config wrangler.local.toml",
+    "dev": "wrangler dev --config wrangler.local.toml",
+    "tail": "wrangler tail --config wrangler.local.toml",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "webdav",
+    "streaming",
+    "debrid-media-manager",
+    "dmm-cast"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@cloudflare/kv-asset-handler": "^0.4.1",
+    "hono": "^4.10.2"
+  },
+  "devDependencies": {
+    "wrangler": "^4.45.0"
+  }
+}
