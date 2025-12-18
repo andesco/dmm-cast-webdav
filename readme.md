@@ -1,17 +1,17 @@
 <div align="center">
-    <p><img src="public/dmmcast-atv.png" width="300px"><br />
+    <p><img src="public/favorite-atv.png" width="300px"><br />
     <h1>DMM Cast WebDAV</h1>
 </div>
 
 
 DMM Cast WebDAV makes it quick and easy to stream media cast from [Debrid Media Manager]:
 
-* <ins>without</ins> Stremio add-ons; and
+* **without** Stremio add-ons; and
 * with support for [Infuse] and other media players that can stream from **`WebDAV`** and **`.strm`** files.
 
 ## Features
 
-**DMM Cast Streaming**: stream media cast with [DMM Cast] <ins>without</ins> using the Stremio add-on
+**DMM Cast Streaming**: stream media cast with [DMM Cast] **without** using the Stremio add-on
 
 **Delete via WebDAV**: remove media from DMM Cast directly from [Infuse] and other media players
 
@@ -75,7 +75,7 @@ All `.strm` files include `hash` and `imdb` metadata in the filename. These addi
 
 ### Media Player Artwork
 
-Infuse and other media players that support [overriding artwork](https://support.firecore.com/hc/en-us/articles/4405042929559-Overriding-Artwork-and-Metadata) can use the [artwork] served via WebDAV. Infuse defaults to using `favorite.png` and `favorite-atv.png`:
+Infuse and other media players that support [overriding artwork](https://support.firecore.com/hc/en-us/articles/4405042929559-Overriding-Artwork-and-Metadata) can use the [artwork] served via WebDAV. Infuse defaults to using `favorite.png` and `favorite-atv.png`.
 
 <div align="center">
     <p><img src="public/favorite-atv.png" width="300px"><br />
