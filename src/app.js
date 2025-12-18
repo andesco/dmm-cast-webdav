@@ -40,7 +40,7 @@ import { layout, statusHeader, pageHeader, footer, formatBytes } from './html.js
 
 /**
  * Fetch casted links from Debrid Media Manager API
- * Returns items from last 7 days, sorted by most recent
+ * Returns all available items, sorted by most recent
  */
 async function getCastedLinks(rdAccessToken) {
     try {
@@ -51,28 +51,17 @@ async function getCastedLinks(rdAccessToken) {
         }
 
         const data = await response.json();
-        if (!Array.isArray(data)) {
-            console.error('Invalid response from DMM API');
-            return [];
-        }
-
-        // Filter for items from last 7 days
-        const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
-        const filteredLinks = data.filter(link => {
-            if (!link.updatedAt) return false;
-            const updatedTime = new Date(link.updatedAt).getTime();
-            return updatedTime >= sevenDaysAgo;
-        });
+        if (!data || !Array.isArray(data)) return [];
 
         // Sort by updatedAt (most recent first)
-        filteredLinks.sort((a, b) => {
+        const sortedData = data.sort((a, b) => {
             const timeA = new Date(a.updatedAt).getTime();
             const timeB = new Date(b.updatedAt).getTime();
             return timeB - timeA;
         });
 
         // Format for display
-        return filteredLinks.map(link => {
+        return sortedData.map(link => {
             // Extract filename from URL path if not provided
             let filename = link.filename;
             if (!filename || filename === 'Unknown') {

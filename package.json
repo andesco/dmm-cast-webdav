@@ -5,11 +5,10 @@
   "description": "WebDAV streaming service for Debrid Media Manager Cast links",
   "main": "src/app.js",
   "scripts": {
-    "build:assets": "node scripts/generate-assets.js",
+    "build": "node scripts/generate-assets.js",
     "deploy": "wrangler deploy --config wrangler.local.toml",
     "dev": "wrangler dev --config wrangler.local.toml",
-    "tail": "wrangler tail --config wrangler.local.toml",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "tail": "wrangler tail --config wrangler.local.toml"
   },
   "keywords": [
     "webdav",

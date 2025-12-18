@@ -32,7 +32,7 @@
 ## Build/Deploy Commands
 
 - **Dev server**: `npm run dev`
-- **Build assets**: `npm run build:assets`
+- **Build assets**: `npm run build`
 - **Deploy**: `npm run deploy`
 - **Tail logs**: `npm run tail`
 

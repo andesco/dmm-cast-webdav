@@ -35,8 +35,6 @@ Built on [Hono] to run as a Cloudflare Workers serverless function.
    `WEBDAV_USERNAME` \
    `WEBDAV_PASSWORD`
    
-   Optional Text Variables:\
-   `LOG_FORMAT`
 
 3. Verify your DMM Cast media is accessible:
    ```
@@ -62,7 +60,6 @@ Cast media using [Debrid Media Manager][DMM Cast]:
 Add the WebDAV endpoint to your media player:
 
 - URL: `https://{hostname}/`
-  - all DMM Cast media added within the last 7 days
 - username: `WEBDAV_USERNAME`
 - password: `WEBDAV_PASSWORD`
 
@@ -108,7 +105,9 @@ wrangler secret put WEBDAV_PASSWORD
 npm run deploy
 ```
 
-## Health Check Endpoint
+## Troubleshooting
+
+### Health Check Endpoint
 
 The `/health` endpoint is available for monitoring and does not require authentication:
 ```
@@ -122,14 +121,12 @@ http://your-worker-url/health
 }
 ```
 
-## Service Logs
+### Service Logs
 
 Cloudflare Worker:
 ```bash
 npm run tail
 ```
-
-## Troubleshooting
 
 ### Common Issues
 
@@ -142,7 +139,7 @@ npm run tail
 - verify `account_id` is correct in `wrangler.local.toml`
 
 **No media appears in WebDAV:**
-- verify you have cast media in [DMM Cast] within the last 7 days
+- verify you have cast media in [DMM Cast]
 - check that `RD_ACCESS_TOKEN` is valid
 - review worker logs: `npm run tail`
 
