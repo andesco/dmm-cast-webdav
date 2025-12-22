@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "type": "module",
   "description": "WebDAV streaming service for Debrid Media Manager Cast links",
-  "main": "src/app.js",
   "scripts": {
     "build": "node scripts/generate-assets.js",
     "deploy": "wrangler deploy --config wrangler.local.toml",

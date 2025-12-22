@@ -39,5 +39,4 @@ GEMINI*.md
 .dev.vars
 
 # Development
-.dev/
 .DS_Store

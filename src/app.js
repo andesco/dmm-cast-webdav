@@ -129,8 +129,8 @@ app.get('/', async (c) => {
 
 
 app.get('/health', (c) => {
-    // In worker, process.uptime is not available.
-    const uptime = typeof process !== 'undefined' ? process.uptime() : 0;
+    // Workers don't track uptime, always return 0
+    const uptime = 0;
     return c.json({
         status: 'ok',
         uptime: uptime,
