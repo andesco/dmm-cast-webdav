@@ -67,40 +67,28 @@ export function footer() {
 export function loginPage(hostname) {
     return `
 <header>
-    <h2>Setup DMM Cast WebDAV</h2>
-    <p>Enter your Real-Debrid access token to generate your WebDAV URL</p>
+    <h2>DMM Cast WebDAV Setup</h2>
+    <p>This worker is protected by HTTP Basic Authentication.</p>
 </header>
-<form id="token-form">
-    <label for="token">Real-Debrid Access Token
-        <input type="password" id="token" name="token" placeholder="Your RD token..." required>
-        <small>You can find your token at <a href="https://real-debrid.com/apitoken" target="_blank">real-debrid.com/apitoken</a></small>
-    </label>
-    <button type="submit">Generate WebDAV URL</button>
-</form>
 
-<div id="result" style="display: none; margin-top: 2rem;">
-    <ins>Successfully generated!</ins>
-    <p>Your WebDAV endpoint is:</p>
-    <pre><code id="webdav-url"></code></pre>
-    <p><small>Copy this URL into your favorite WebDAV client (Infuse, Kodi, VLC, etc.)</small></p>
-    <div class="button-wrapper">
-        <a id="browse-link" href="#" role="button" class="secondary">Browse Files Online</a>
-    </div>
+<div class="status-info">
+    <p>To connect your WebDAV client (Infuse, Kodi, VLC, etc.), use the following credentials:</p>
+    <ul>
+        <li><strong>URL:</strong> <code>${hostname}/</code></li>
+        <li><strong>Username:</strong> <code>token</code></li>
+        <li><strong>Password:</strong> <code>[Your Real-Debrid API Token]</code></li>
+    </ul>
+    <p><small>You can find your token at <a href="https://real-debrid.com/apitoken" target="_blank">real-debrid.com/apitoken</a></small></p>
 </div>
 
-<script>
-    document.getElementById('token-form').addEventListener('submit', function(e) {
-        e.preventDefault();
-        const token = document.getElementById('token').value.trim();
-        if (token) {
-            const baseUrl = "${hostname}";
-            const webdavUrl = baseUrl + "/" + token + "/";
-            document.getElementById('webdav-url').textContent = webdavUrl;
-            document.getElementById('browse-link').href = webdavUrl;
-            document.getElementById('result').style.display = 'block';
-        }
-    });
-</script>
+<div class="button-wrapper">
+    <a href="/" role="button">Access Files Online</a>
+</div>
+
+<article style="margin-top: 2rem; border-top: 1px solid var(--pico-muted-border-color); padding-top: 1rem;">
+    <h3>How to logout/switch users</h3>
+    <p><small>To switch to a different Real-Debrid account, you need to clear your browser's authentication cache. The easiest way is to use a Private/Incognito window or clear your "Site Data" for this domain.</small></p>
+</article>
 `;
 }
 

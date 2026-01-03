@@ -1,6 +1,7 @@
 
 import { serveStatic } from 'hono/cloudflare-workers';
 import { Hono } from 'hono';
+import { basicAuth } from 'hono/basic-auth';
 import { serveAsset, getAssetsInDirectory } from './dynamic-assets.js';
 import { layout, statusHeader, pageHeader, footer, loginPage, formatBytes } from './html.js';
 
@@ -8,21 +9,31 @@ const app = new Hono();
 
 // --- Middleware ---
 
-// Public paths that don't need a token
+// Public paths that don't need authentication
 const publicPaths = ['/health', '/style.css', '/public/'];
 
 app.use('*', async (c, next) => {
     const path = c.req.path;
-    if (path === '/' || publicPaths.some(p => path === p || path.startsWith(p))) {
+    // Skip auth for health check and public static assets
+    if (publicPaths.some(p => path === p || path.startsWith(p))) {
         return next();
     }
-    await next();
+
+    // Apply Basic Auth globally using 'token' as user and RD token as pass
+    return basicAuth({
+        verifyUser: (user, pass, c) => {
+            return user === 'token' && pass && pass.length > 0;
+        },
+    })(c, next);
 });
+
+// --- Helpers ---
 
 /**
  * Fetch casted links from Debrid Media Manager API
  */
 async function getCastedLinks(rdAccessToken) {
+    if (!rdAccessToken) return [];
     try {
         const response = await fetch(`https://debridmediamanager.com/api/stremio/links?token=${rdAccessToken}`);
         if (!response.ok) {
@@ -71,6 +82,7 @@ async function getCastedLinks(rdAccessToken) {
  * Get DMM casted links as WebDAV files
  */
 async function getDMMCastWebDAVFiles(rdAccessToken) {
+    if (!rdAccessToken) return [];
     try {
         const castedLinks = await getCastedLinks(rdAccessToken);
         const filesMap = new Map();
@@ -112,32 +124,23 @@ async function getDMMCastWebDAVFiles(rdAccessToken) {
 
 // --- Routes ---
 
-// Root route - Landing page for token setup
-app.get('/', (c) => {
-    const hostname = new URL(c.req.url).origin;
-    return c.html(layout('', loginPage(hostname)));
-});
+// Root route - Browser View & WebDAV root
+app.get('/', async (c) => {
+    // extract token from Basic Auth password
+    const auth = c.req.header('Authorization');
+    const credentials = atob(auth.split(' ')[1]);
+    const [, token] = credentials.split(':');
 
-// Health check
-app.get('/health', (c) => c.json({ status: 'ok', timestamp: new Date().toISOString() }));
-
-// Static assets
-app.get('/style.css', async (c) => (await serveAsset('style.css', c.env)) || c.text('Not found', 404));
-app.get('/public/*', async (c) => {
-    const path = c.req.path.replace('/public/', '');
-    return (await serveAsset(path, c.env)) || c.text('Not found', 404);
-});
-
-// WebDAV Browser View - GET /:token/
-app.get('/:token/', async (c) => {
-    const { token } = c.req.param();
     const hostname = new URL(c.req.url).origin;
     const castedLinks = await getCastedLinks(token);
 
     if (castedLinks.length === 0) {
         return c.html(layout('', `
             ${statusHeader('No links found', null, 'DMM Cast WebDAV', 'Check if your token is correct or if you have any casted links.')}
-            <div class="button-wrapper"><a href="/" role="button">Back to Setup</a></div>
+            <div class="status-info">
+                <p>Welcome! You are authenticated as <code>token</code>.</p>
+                <p><small>WebDAV: <code>${hostname}/</code></small></p>
+            </div>
             ${footer()}
         `));
     }
@@ -145,14 +148,14 @@ app.get('/:token/', async (c) => {
     const content = `
         ${statusHeader()}
         <div class="status-info">
-            <p><small>WebDAV: <code>${hostname}/${token}/</code></small></p>
+            <p><small>WebDAV: <code>${hostname}/</code></small></p>
             <ul>
                 ${castedLinks.map(link => `
                 <li>
                     ${link.filename}
                     <small class="nowrap">
                         <a href="${link.url}" target="_blank"><code>${link.sizeGB} GB</code></a>
-                        &nbsp;<a href="/${token}/${encodeURIComponent(link.strmFilename).replace(/%7B/g, '{').replace(/%7D/g, '}')}"><code>1 KB .strm</code></a>
+                        &nbsp;<a href="/${encodeURIComponent(link.strmFilename).replace(/%7B/g, '{').replace(/%7D/g, '}')}"><code>1 KB .strm</code></a>
                     </small>
                 </li>
                 `).join('')}
@@ -166,12 +169,16 @@ app.get('/:token/', async (c) => {
     return c.html(layout('', content));
 });
 
-// WebDAV PROPFIND /:token/
-app.on(['PROPFIND'], '/:token/', async (c) => {
-    const { token } = c.req.param();
+// WebDAV PROPFIND /
+app.on(['PROPFIND'], '/', async (c) => {
+    // extract token from Basic Auth password
+    const auth = c.req.header('Authorization');
+    const credentials = atob(auth.split(' ')[1]);
+    const [, token] = credentials.split(':');
+
     const files = await getDMMCastWebDAVFiles(token);
     const depth = c.req.header('Depth') || '0';
-    const requestPath = `/${token}/`;
+    const requestPath = '/';
 
     const publicFiles = await getAssetsInDirectory('', c.env);
     const pngFiles = publicFiles.filter(file => file.name.endsWith('.png'));
@@ -210,15 +217,19 @@ ${depth !== '0' ? responses : ''}
     return new Response(xml, { status: 207, headers: { 'Content-Type': 'application/xml; charset=utf-8' } });
 });
 
-// GET /:token/:filename - Serve files
-app.get('/:token/:filename', async (c) => {
-    const { token, filename } = c.req.param();
+// GET /:filename - Serve files
+app.get('/:filename', async (c) => {
+    const { filename } = c.req.param();
 
     if (filename.endsWith('.png')) {
         return (await serveAsset(filename, c.env)) || c.text('Not found', 404);
     }
 
     if (filename.endsWith('.strm')) {
+        const auth = c.req.header('Authorization');
+        const credentials = atob(auth.split(' ')[1]);
+        const [, token] = credentials.split(':');
+
         const files = await getDMMCastWebDAVFiles(token);
         const file = files.find(f => f.name === filename);
         if (!file) return c.text('File not found', 404);
@@ -228,10 +239,14 @@ app.get('/:token/:filename', async (c) => {
     return c.text('File not found', 404);
 });
 
-// DELETE /:token/:filename - Delete DMM entry
-app.on(['DELETE'], '/:token/:filename', async (c) => {
-    const { token, filename } = c.req.param();
+// DELETE /:filename - Delete DMM entry
+app.on(['DELETE'], '/:filename', async (c) => {
+    const { filename } = c.req.param();
     const decodedFilename = decodeURIComponent(filename);
+
+    const auth = c.req.header('Authorization');
+    const credentials = atob(auth.split(' ')[1]);
+    const [, token] = credentials.split(':');
 
     try {
         const match = decodedFilename.match(/\{hash-([^}]+)\}\{imdb-([^}]+)\}\.strm$/);
@@ -249,6 +264,14 @@ app.on(['DELETE'], '/:token/:filename', async (c) => {
     } catch (error) {
         return c.text(error.message, 500);
     }
+});
+
+// Common Routes
+app.get('/health', (c) => c.json({ status: 'ok', timestamp: new Date().toISOString() }));
+app.get('/style.css', async (c) => (await serveAsset('style.css', c.env)) || c.text('Not found', 404));
+app.get('/public/*', async (c) => {
+    const path = c.req.path.replace('/public/', '');
+    return (await serveAsset(path, c.env)) || c.text('Not found', 404);
 });
 
 export default app;
