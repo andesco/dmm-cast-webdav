@@ -55,6 +55,45 @@ export function pageHeader(title, subtitle = null) {
 </header>`;
 }
 
+export function browserView(castedLinks, hostname, isSingleUser) {
+    const logoutButton = `<button class="outline secondary" style="padding: 0.2rem 0.5rem; font-size: 0.8rem; margin-top: 0.25rem;" onclick="location.href='/logout'">Sign Out</button>`;
+
+    const webdavHints = `
+        <div style="margin-top: 0.5rem;">
+            <p style="margin-bottom: 0;"><small><strong>WebDAV URL:</strong> <code>${hostname}/</code></small></p>
+            <p style="margin-bottom: 0;"><small><strong>username:</strong> <code>${isSingleUser ? 'your configured username' : 'apitoken'}</code></small></p>
+            <p style="margin-bottom: 0;"><small><strong>password:</strong> <code>${isSingleUser ? 'your configured password' : '[your API token]'}</code></small></p>
+        </div>`;
+
+    return `
+${statusHeader()}
+<div class="status-info">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+        <div>
+            <p><small>source: <a href="https://debridmediamanager.com/stremio/manage" target="_blank">debridmediamanager.com/stremio/manage</a></small></p>
+            ${webdavHints}
+        </div>
+        ${logoutButton}
+    </div>
+    <ul>
+        ${castedLinks.map(link => `
+        <li>
+            ${link.filename}
+            <small class="nowrap">
+                <a href="${link.url}" target="_blank"><code>${link.sizeGB} GB</code></a>
+                &nbsp;<a href="/${encodeURIComponent(link.strmFilename).replace(/%7B/g, '{').replace(/%7D/g, '}')}"><code>1 KB .strm</code></a>
+            </small>
+        </li>
+        `).join('')}
+    </ul>
+</div>
+<div class="button-wrapper">
+    <a href="https://debridmediamanager.com/stremio/manage" target="_blank" role="button">Manage Casted Links</a>
+</div>
+${footer()}
+`;
+}
+
 export function loginPage(hostname, isSingleUser, defaultUsername) {
     const usernameValue = isSingleUser ? (defaultUsername || '') : 'apitoken';
     const usernameReadonly = isSingleUser ? '' : 'readonly';
@@ -64,7 +103,7 @@ export function loginPage(hostname, isSingleUser, defaultUsername) {
     return `
 <header>
     <h2>DMM Cast WebDAV</h2>
-    <p>${isSingleUser ? 'Log in with your WebDAV credentials.' : 'Enter your Real-Debrid token to browse your files.'}</p>
+    <p>${isSingleUser ? 'Sign in with your WebDAV credentials.' : 'Enter your Real-Debrid token to browse your files.'}</p>
 </header>
 
 <div id="login-section">
@@ -77,7 +116,7 @@ export function loginPage(hostname, isSingleUser, defaultUsername) {
             <input type="password" id="password" name="password" placeholder="${passwordPlaceholder}" autocomplete="current-password" required>
             ${!isSingleUser ? '<small><a href="https://real-debrid.com/apitoken" target="_blank">real-debrid.com/apitoken</a></small>' : ''}
         </label>
-        <button type="submit">Log In</button>
+        <button type="submit">Sign In</button>
     </form>
 </div>
 
