@@ -3,7 +3,7 @@ import { serveStatic } from 'hono/cloudflare-workers';
 import { Hono } from 'hono';
 import { basicAuth } from 'hono/basic-auth';
 import { serveAsset, getAssetsInDirectory } from './dynamic-assets.js';
-import { layout, statusHeader, pageHeader, footer, loginPage, formatBytes } from './html.js';
+import { layout, statusHeader, pageHeader, footer, formatBytes } from './html.js';
 
 const app = new Hono();
 
