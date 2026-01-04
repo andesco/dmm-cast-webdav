@@ -57,7 +57,7 @@ async function extractToken(c) {
 }
 
 
-import { layout, statusHeader, pageHeader, footer, formatBytes } from './html.js';
+import { layout, loginPage, statusHeader, pageHeader, footer, formatBytes } from './html.js';
 
 /**
  * Fetch casted links from Debrid Media Manager API
