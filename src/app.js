@@ -1,39 +1,60 @@
 
 import { serveStatic } from 'hono/cloudflare-workers';
 import { Hono } from 'hono';
-import { basicAuth } from 'hono/basic-auth';
+import { getCookie, setCookie } from 'hono/cookie';
 import { serveAsset, getAssetsInDirectory } from './dynamic-assets.js';
 
 const app = new Hono();
 
 // --- Middleware ---
 
-// Validate required environment variables
-app.use('*', async (c, next) => {
-    if (!c.env.RD_ACCESS_TOKEN || !c.env.WEBDAV_PASSWORD) {
-        return c.text('Missing required environment variables: RD_ACCESS_TOKEN, WEBDAV_PASSWORD', 500);
+// Determine Auth Mode helper
+function isSingleUserMode(env) {
+    return !!(env.RD_ACCESS_TOKEN && env.WEBDAV_USERNAME && env.WEBDAV_PASSWORD);
+}
+
+// Credential Validator
+function validateCredentials(username, password, env) {
+    if (isSingleUserMode(env)) {
+        // Single User Mode: Check against env vars
+        if (username === env.WEBDAV_USERNAME && password === env.WEBDAV_PASSWORD) {
+            return env.RD_ACCESS_TOKEN;
+        }
+    } else {
+        // Multi User Mode: Username must be 'apitoken', password is the token
+        if (username === 'apitoken') {
+            return password;
+        }
     }
-    await next();
-});
+    return null;
+}
 
-// Basic Auth Middleware - Protect ALL routes except /health and public assets
-app.use('*', async (c, next) => {
-    // Skip auth for health check and public static assets
-    const publicPaths = ['/health', '/style.css', '/public/'];
-    if (publicPaths.some(path => c.req.path === path || c.req.path.startsWith(path))) {
-        return next();
+// Token Extractor - Checks Cookie then Basic Auth
+async function extractToken(c) {
+    // 1. Try Cookie (Browser Session)
+    const cookieToken = getCookie(c, 'rd_token');
+    if (cookieToken) return cookieToken;
+
+    // 2. Try Basic Auth (WebDAV Clients)
+    const auth = c.req.header('Authorization');
+    if (auth && auth.startsWith('Basic ')) {
+        try {
+            const base64 = auth.split(' ')[1];
+            const credentials = atob(base64);
+            // Handle potential lack of colon
+            const colonIndex = credentials.indexOf(':');
+            if (colonIndex !== -1) {
+                const user = credentials.substring(0, colonIndex);
+                const pass = credentials.substring(colonIndex + 1);
+                return validateCredentials(user, pass, c.env);
+            }
+        } catch (e) {
+            console.error('Basic Auth decode error:', e);
+        }
     }
 
-    // Apply Basic Auth
-    const username = c.env.WEBDAV_USERNAME || 'admin';
-    const password = c.env.WEBDAV_PASSWORD;
-
-    return basicAuth({
-        verifyUser: (user, pass, c) => {
-            return user === username && pass === password;
-        },
-    })(c, next);
-});
+    return null;
+}
 
 
 import { layout, statusHeader, pageHeader, footer, formatBytes } from './html.js';
@@ -92,11 +113,49 @@ async function getCastedLinks(rdAccessToken) {
 
 // --- Routes ---
 
+// Local Login Route (Form Submission)
+app.post('/login', async (c) => {
+    try {
+        const body = await c.req.parseBody();
+        const username = body.username;
+        const password = body.password;
+
+        const token = validateCredentials(username, password, c.env);
+
+        if (token) {
+            // Success: Set cookie
+            const d = new Date();
+            d.setTime(d.getTime() + (30 * 24 * 60 * 60 * 1000)); // 30 days
+            setCookie(c, 'rd_token', token, {
+                expires: d,
+                path: '/',
+                secure: true,
+                sameSite: 'Strict',
+                httpOnly: false // Accessible to JS for logout if needed, though strictly not necessary for the worker
+            });
+            return c.redirect('/');
+        } else {
+            return c.html(layout('Login Failed', '<h1>Login Failed</h1><p>Invalid credentials.</p><a href="/">Try Again</a>'));
+        }
+    } catch (e) {
+        return c.text('Bad Request', 400);
+    }
+});
+
+// Root route - Browser View or Login Page
 app.get('/', async (c) => {
+    const token = await extractToken(c);
     const hostname = new URL(c.req.url).origin;
 
+    if (!token) {
+        const singleUser = isSingleUserMode(c.env);
+        // If single user mode, login page defaults username. 
+        // We pass the singleUser flag to UI.
+        return c.html(layout('Login', loginPage(hostname, singleUser, c.env.WEBDAV_USERNAME)));
+    }
+
     // Get casted links from DMM API
-    const castedLinks = await getCastedLinks(c.env.RD_ACCESS_TOKEN);
+    const castedLinks = await getCastedLinks(token);
 
     const content = `
 		${statusHeader()}
@@ -289,7 +348,15 @@ app.get('/:filename', async (c) => {
 
     // Handle .strm files
     if (filename.endsWith('.strm')) {
-        const files = await getDMMCastWebDAVFiles(c.env.RD_ACCESS_TOKEN);
+        const token = await extractToken(c);
+        if (!token) {
+            return new Response('Unauthorized', {
+                status: 401,
+                headers: { 'WWW-Authenticate': 'Basic realm="DMM Cast WebDAV", charset="UTF-8"' }
+            });
+        }
+
+        const files = await getDMMCastWebDAVFiles(token);
         const file = files.find(f => f.name === filename);
 
         if (!file) {
@@ -308,6 +375,9 @@ app.on(['DELETE'], '/*', async (c) => {
     const fullPath = new URL(c.req.url).pathname;
     const filename = decodeURIComponent(fullPath.replace('/', ''));
 
+    const token = await extractToken(c);
+    if (!token) return c.text('Unauthorized', 401);
+
     try {
         // Parse hash and imdbId from encoded filename (both with prefixes)
         const match = filename.match(/\{hash-([^}]+)\}\{imdb-([^}]+)\}\.strm$/);
@@ -325,7 +395,7 @@ app.on(['DELETE'], '/*', async (c) => {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                token: c.env.RD_ACCESS_TOKEN,
+                token: token,
                 imdbId: imdbId,
                 hash: hash,
             }),

@@ -55,6 +55,43 @@ export function pageHeader(title, subtitle = null) {
 </header>`;
 }
 
+export function loginPage(hostname, isSingleUser, defaultUsername) {
+    const usernameValue = isSingleUser ? (defaultUsername || '') : 'apitoken';
+    const usernameReadonly = isSingleUser ? '' : 'readonly';
+    const passwordPlaceholder = isSingleUser ? 'enter WebDAV password' : 'paste your API token';
+    const passwordLabel = isSingleUser ? 'WebDAV Password' : 'Real-Debrid API Token';
+
+    return `
+<header>
+    <h2>DMM Cast WebDAV</h2>
+    <p>${isSingleUser ? 'Log in with your WebDAV credentials.' : 'Enter your Real-Debrid token to browse your files.'}</p>
+</header>
+
+<div id="login-section">
+    <form id="login-form" method="POST" action="/login">
+        <label for="username">Username
+            <input type="text" id="username" name="username" value="${usernameValue}" ${usernameReadonly} autocomplete="username" required>
+        </label>
+        
+        <label for="password">${passwordLabel}
+            <input type="password" id="password" name="password" placeholder="${passwordPlaceholder}" autocomplete="current-password" required>
+            ${!isSingleUser ? '<small><a href="https://real-debrid.com/apitoken" target="_blank">real-debrid.com/apitoken</a></small>' : ''}
+        </label>
+        <button type="submit">Log In</button>
+    </form>
+</div>
+
+<article style="margin-top: 2rem;">
+    <h3>WebDAV for Infuse and other media players</h3>
+    <ul>
+        <li><strong>WebDAV URL:</strong> <code>${hostname}/</code></li>
+        <li><strong>username:</strong> <code>${isSingleUser ? (defaultUsername || 'your_username') : 'apitoken'}</code></li>
+        <li><strong>password:</strong> <code>${isSingleUser ? '[your_password]' : '[your API token]'}</code></li>
+    </ul>
+</article>
+`;
+}
+
 export function footer() {
     return `
 <footer style="margin-top: 2rem; text-align: center;">
