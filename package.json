@@ -3,6 +3,11 @@
   "version": "1.0.0",
   "type": "module",
   "description": "WebDAV streaming service for Debrid Media Manager Cast links",
+  "homepage": "https://dmmcast.stream",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/andesco/dmm-cast-webdav.git"
+  },
   "scripts": {
     "build": "node scripts/generate-assets.js",
     "deploy": "wrangler deploy --config wrangler.local.toml",

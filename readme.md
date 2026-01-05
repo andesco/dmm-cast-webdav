@@ -26,35 +26,40 @@ DMM Cast WebDAV makes it quick and easy to stream media cast from [Debrid Media 
    https://github.com/andesco/dmm-cast-webdav
    ```
 
-2. [Workers & Pages](https://dash.cloudflare.com/?to=/:account/workers-and-pages/) → {worker name} → Settings: <nobr>Variables and Secrets:</nobr>
+2. **Optional: Enable Single-User Mode**\
+[Workers & Pages](https://dash.cloudflare.com/?to=/:account/workers-and-pages/) → {worker name} → Settings: <nobr>Variables and Secrets:</nobr>
 
-   **Required Secrets**:\
    `RD_ACCESS_TOKEN` · https://real-debrid.com/apitoken \
    `WEBDAV_USERNAME` \
    `WEBDAV_PASSWORD`
    
 
-3. Verify your DMM Cast media is accessible:
+3. Verify that your DMM Cast media is accessible:
    ```
    https://dmm-cast-webdav.{user}.workers.dev
    ```
-
-4. Add the WebDAV endpoint to your media player:
-   ```
-   https://dmm-cast-webdav.{user}.workers.dev/
-   ```
+4. Add the WebDAV endpoint to Infuse or other supported media player.
 
 ## Usage
 
-### WebDAV
+### Default: Multi-User Mode • [dmmcast.stream]
 
-Add the WebDAV endpoint to your media player:
+Any user can authenticate with their own Real-Debrid API token. No configuration is required.
 
-- URL: `https://{hostname}/`
-- username: `WEBDAV_USERNAME`
-- password: `WEBDAV_PASSWORD`
+  - WebDAV URL: `https://{hostname}/`
+  - username: `apitoken`
+  - password: `[your API token]`
 
-WebDAV directories and file lists are refreshed each time you access the service, with `.strm` files created for each link.
+### Optional: Single-User Mode
+A single user can authenticates with custom credentials. Cloudflare Secrets are all required.
+
+  - WebDAV URL: `https://{hostname}/`
+  - username: `{WEBDAV_USERNAME}`
+  - password: `{WEBDAV_PASSWORD}`
+
+### Stream Media
+
+WebDAV directories and file lists are refreshed each time you access the service, with `.strm` files created for each direct download link.
 
 ### Add Media
 
@@ -85,17 +90,17 @@ Infuse and other media players that support [overriding artwork](https://support
 
 ## Configuration
 
-### Environment Variables
+### Optional Environment Variables
 
-Configuration is handled through environment variables for Cloudflare Workers deployment.
+Configuration is optional and handled through environment variables (Secrets)
 
 Use `npx wrangler secret put {VARIABLE_NAME}` to set secrets.
 
-| Variable | Description | Default |
-|:---|:---|:---|
-| `RD_ACCESS_TOKEN` | **required**: your Real-Debrid API access token | |
-| `WEBDAV_PASSWORD` | **required**: password for basic auth | |
-| `WEBDAV_USERNAME` | username for basic auth | `admin` |
+Secret | Description |
+-------|-------------|
+`RD_ACCESS_TOKEN` | your Real-Debrid API access token
+`WEBDAV_PASSWORD` | password for basic auth
+`WEBDAV_USERNAME` | username for basic auth
 
 ## Deploy Using Wrangler CLI
 
@@ -117,7 +122,7 @@ npm run deploy
 
 The `/health` endpoint is available for monitoring and does not require authentication:
 ```
-http://your-worker-url/health
+http://{hostname}/health
 ```
 ```json
 {
@@ -127,27 +132,20 @@ http://your-worker-url/health
 }
 ```
 
-### Service Logs
-
-Cloudflare Worker:
-```bash
-npm run tail
-```
-
 ### Common Issues
 
 **Authentication fails:**
 - verify `WEBDAV_USERNAME` and `WEBDAV_PASSWORD` are set correctly
+- verify `RD_ACCESS_TOKEN` is set correctly
 - check the credentials used by your media player
 
 **Cloudflare Worker deployment fails:**
-- ensure secrets are set: `npx wrangler secret list`
-- verify `account_id` is correct in `wrangler.local.toml`
+- verify `account_id` is correct if using `wrangler.local.toml`
 
 **No media appears in WebDAV:**
 - verify you have cast media in [DMM Cast]
-- check that `RD_ACCESS_TOKEN` is valid
-- review worker logs: `npm run tail`
+- check that `RD_ACCESS_TOKEN` or your Real-Debrid API token is valid
+- review Cloudflare Worker service logs: `npm run tail`
 
 [Hono]: http://hono.dev
 [Infuse]: https://firecore.com/infuse
@@ -156,6 +154,7 @@ npm run tail
 [dmm]: http://debridmediamanager.com
 [DMM]: https://debridmediamanager.com
 [DMM Cast]: https://debridmediamanager.com/stremio/manage
+[dmmcast.stream]: https://dmmcast.stream
 [Stremio add-on]: https://debridmediamanager.com/stremio
 [Real-Debrid]: https://real-debrid.com
 [artwork]: https://github.com/andesco/dmm-cast-webdav/tree/main/public
