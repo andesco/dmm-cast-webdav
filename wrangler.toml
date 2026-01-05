@@ -7,3 +7,11 @@ preview_urls = false
 
 [build]
 command = "npm run build"
+
+[build.upload]
+format = "modules"
+main = "src/app.js"
+
+[dev]
+# Ignore the generated public-assets.js to avoid build loops
+ignore_rules = ["src/public-assets.js"]

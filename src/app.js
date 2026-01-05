@@ -142,63 +142,43 @@ app.post('/login', async (c) => {
     }
 });
 
+// Logout Route
+app.get('/logout', (c) => {
+    setCookie(c, 'rd_token', '', {
+        expires: new Date(0), // Expire immediately
+        path: '/',
+        secure: true,
+        sameSite: 'Strict'
+    });
+    return c.redirect('/');
+});
+
 // Root route - Browser View or Login Page
 app.get('/', async (c) => {
-    const token = await extractToken(c);
+    const token = getCookie(c, 'rd_token');
     const hostname = new URL(c.req.url).origin;
+    const singleUser = isSingleUserMode(c.env);
 
     if (!token) {
-        const singleUser = isSingleUserMode(c.env);
-        // If single user mode, login page defaults username. 
-        // We pass the singleUser flag to UI.
-        return c.html(layout('Login', loginPage(hostname, singleUser, c.env.WEBDAV_USERNAME)));
+        // If no token (cookie or basic auth), show sign in page
+        return c.html(layout('Sign In', loginPage(hostname, singleUser, c.env.WEBDAV_USERNAME)));
     }
 
     // Get casted links from DMM API
     const castedLinks = await getCastedLinks(token);
 
-    const content = `
-		${statusHeader()}
-		${castedLinks && castedLinks.length > 0 ? `
-		<div class="status-info">
-			<p><small>source: <a href="https://debridmediamanager.com/stremio/manage" target="_blank">debridmediamanager.com/stremio/manage</a></small><br />
-			   <small>WebDAV: <code>${hostname}/</code></small>
-            </p>
-			<ul>
-				${castedLinks.map(link => `
-				<li>
-                    ${link.filename}
-                    <small class="nowrap">
-                        <a href="${link.url}" target="_blank"><code>${link.sizeGB} GB</code></a>
-                        &nbsp;<a href="/${encodeURIComponent(link.strmFilename).replace(/%7B/g, '{').replace(/%7D/g, '}')}"><code>1 KB .strm</code></a>
-                    </small>
-                </li>
-				`).join('')}
-			</ul>
-		</div>
-        <div class="button-wrapper">
-            <a href="https://debridmediamanager.com/stremio/manage" target="_blank" role="button">Manage Casted Links</a>
-        </div>
-		` : ''}
-		${footer()}
-	`;
+    // If token is invalid (links fail to fetch), browserView will show empty or we could handle it
+    const content = browserView(castedLinks, hostname, singleUser);
     return c.html(layout('', content));
 });
 
-
-
 app.get('/health', (c) => {
-    // Workers don't track uptime, always return 0
-    const uptime = 0;
     return c.json({
         status: 'ok',
-        uptime: uptime,
+        uptime: 0,
         timestamp: new Date().toISOString(),
     });
 });
-
-
-
 
 /**
  * Get DMM casted links as WebDAV files
@@ -212,7 +192,6 @@ async function getDMMCastWebDAVFiles(rdAccessToken) {
         const filesMap = new Map();
         for (const link of castedLinks) {
             const strmUrl = link.url;
-            // Use precached strmFilename
             const filename = link.strmFilename;
             const modified = new Date(link.updatedAt).getTime();
 
@@ -226,8 +205,8 @@ async function getDMMCastWebDAVFiles(rdAccessToken) {
                 originalFilename: link.filename,
                 filesize: link.sizeGB * 1024 * 1024 * 1024,
                 downloadUrl: link.url,
-                imdbId: link.imdbId,    // Store for reference
-                hash: link.hash,         // Store for reference
+                imdbId: link.imdbId,
+                hash: link.hash,
             };
 
             const existing = filesMap.get(filename);
@@ -240,29 +219,29 @@ async function getDMMCastWebDAVFiles(rdAccessToken) {
             }
         }
 
-        // Convert map to array and remove temporary timestamp field
-        const files = Array.from(filesMap.values()).map(file => {
-            const { modifiedTimestamp, ...cleanFile } = file;
-            return cleanFile;
-        });
-
-        return files;
+        return Array.from(filesMap.values()).map(({ modifiedTimestamp, ...cleanFile }) => cleanFile);
     } catch (error) {
-        console.error('Error in getDMMCastWebDAVFiles:', error.message, error.stack);
+        console.error('Error in getDMMCastWebDAVFiles:', error.message);
         return [];
     }
 }
 
-// PROPFIND / - WebDAV root serving DMM Cast .strm files and PNG files
+// PROPFIND / - WebDAV root
 app.on(['PROPFIND'], '/', async (c) => {
-    const files = await getDMMCastWebDAVFiles(c.env.RD_ACCESS_TOKEN);
+    const token = await extractToken(c);
+    if (!token) {
+        return new Response('Unauthorized', {
+            status: 401,
+            headers: { 'WWW-Authenticate': 'Basic realm="DMM Cast WebDAV", charset="UTF-8"' }
+        });
+    }
+
+    const files = await getDMMCastWebDAVFiles(token);
     const depth = c.req.header('Depth') || '0';
     const requestUrl = new URL(c.req.url);
     const requestPath = requestUrl.pathname;
 
-    const env = c.env;
-    // Get all PNG files from public directory
-    const publicFiles = await getAssetsInDirectory('', env);
+    const publicFiles = await getAssetsInDirectory('', c.env);
     const pngFiles = publicFiles.filter(file => file.name.endsWith('.png'));
 
     const allFiles = [...files, ...pngFiles];
@@ -294,59 +273,32 @@ app.on(['PROPFIND'], '/', async (c) => {
         </D:propstat>
       </D:response>`;
 
-    const xml = `<?xml version="1.0" encoding="utf-8"?>
-<D:multistatus xmlns:D="DAV:">
-${depth !== '0' ? responses : ''}${collectionResponse}
-</D:multistatus>`;
+    const xml = `<?xml version="1.0" encoding="utf-8"?><D:multistatus xmlns:D="DAV:">${depth !== '0' ? responses : ''}${collectionResponse}</D:multistatus>`;
 
     return new Response(xml, { status: 207, headers: { 'Content-Type': 'application/xml; charset=utf-8' } });
 });
 
-
-
-
-
-
-
-
-
-
-
-
 // --- Static File Serving ---
-// Dynamically serve files from R2 (if configured) or bundled assets
-
-// Serve style.css from root path
 app.get('/style.css', async (c) => {
     const response = await serveAsset('style.css', c.env);
     return response || c.text('File not found: style.css', 404);
 });
 
-// Dynamic route handler for /public/* paths
 app.get('/public/*', async (c) => {
     const path = c.req.path.replace('/public/', '');
     const response = await serveAsset(path, c.env);
     return response || c.text(`File not found: ${path}`, 404);
 });
 
-// Removed generic /webdav/:directory/:filename route
-// Static files are now handled in the specific routes below
-
-
-
-// GET /:filename - Serve .strm files from DMM Cast or PNG files from public
+// GET /:filename - Serve .strm files or PNG files
 app.get('/:filename', async (c) => {
     const { filename } = c.req.param();
 
-    // First, try to serve as PNG file from public directory
     if (filename.endsWith('.png')) {
         const response = await serveAsset(filename, c.env);
-        if (response) {
-            return response;
-        }
+        if (response) return response;
     }
 
-    // Handle .strm files
     if (filename.endsWith('.strm')) {
         const token = await extractToken(c);
         if (!token) {
@@ -359,10 +311,7 @@ app.get('/:filename', async (c) => {
         const files = await getDMMCastWebDAVFiles(token);
         const file = files.find(f => f.name === filename);
 
-        if (!file) {
-            return c.text('File not found', 404);
-        }
-
+        if (!file) return c.text('File not found', 404);
         return c.text(file.content, 200, { 'Content-Type': 'text/plain; charset=utf-8' });
     }
 
@@ -371,7 +320,6 @@ app.get('/:filename', async (c) => {
 
 // DELETE /* - Delete DMM Cast entry via WebDAV
 app.on(['DELETE'], '/*', async (c) => {
-    // Extract filename from path
     const fullPath = new URL(c.req.url).pathname;
     const filename = decodeURIComponent(fullPath.replace('/', ''));
 
@@ -379,38 +327,19 @@ app.on(['DELETE'], '/*', async (c) => {
     if (!token) return c.text('Unauthorized', 401);
 
     try {
-        // Parse hash and imdbId from encoded filename (both with prefixes)
         const match = filename.match(/\{hash-([^}]+)\}\{imdb-([^}]+)\}\.strm$/);
-        if (!match) {
-            console.error('Invalid filename format:', filename);
-            return c.text('Invalid filename format - missing hash or imdbId encoding', 400);
-        }
+        if (!match) return c.text('Invalid filename format', 400);
 
         const [, hash, imdbId] = match;
-
-        console.log(`Deleting DMM cast: imdbId=${imdbId}, hash=${hash}`);
-
-        // Call DMM delete API
         const response = await fetch('https://debridmediamanager.com/api/stremio/deletelink', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                token: token,
-                imdbId: imdbId,
-                hash: hash,
-            }),
+            body: JSON.stringify({ token, imdbId, hash }),
         });
 
-        if (!response.ok) {
-            const error = await response.text();
-            console.error('DMM delete failed:', response.status, error);
-            return c.text(`Delete failed: ${error}`, response.status);
-        }
-
-        console.log('DMM cast deleted successfully');
-        return new Response(null, { status: 204 }); // No Content
+        if (!response.ok) return c.text('Delete failed', response.status);
+        return new Response(null, { status: 204 });
     } catch (error) {
-        console.error('Error deleting DMM cast:', error);
         return c.text(`Delete failed: ${error.message}`, 500);
     }
 });
