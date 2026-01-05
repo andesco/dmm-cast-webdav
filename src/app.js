@@ -126,10 +126,11 @@ app.post('/login', async (c) => {
             // Success: Set cookie
             const d = new Date();
             d.setTime(d.getTime() + (30 * 24 * 60 * 60 * 1000)); // 30 days
+            const isSecure = new URL(c.req.url).protocol === 'https:';
             setCookie(c, 'rd_token', token, {
                 expires: d,
                 path: '/',
-                secure: true,
+                secure: isSecure, // Only require HTTPS in production
                 sameSite: 'Strict',
                 httpOnly: false // Accessible to JS for logout if needed, though strictly not necessary for the worker
             });
@@ -144,10 +145,11 @@ app.post('/login', async (c) => {
 
 // Logout Route
 app.get('/logout', (c) => {
+    const isSecure = new URL(c.req.url).protocol === 'https:';
     setCookie(c, 'rd_token', '', {
         expires: new Date(0), // Expire immediately
         path: '/',
-        secure: true,
+        secure: isSecure, // Only require HTTPS in production
         sameSite: 'Strict'
     });
     return c.redirect('/');
@@ -161,7 +163,7 @@ app.get('/', async (c) => {
 
     if (!token) {
         // If no token (cookie or basic auth), show sign in page
-        return c.html(layout('Sign In', loginPage(hostname, singleUser, c.env.WEBDAV_USERNAME)));
+        return c.html(layout('Sign In', loginPage(hostname, singleUser)));
     }
 
     // Get casted links from DMM API

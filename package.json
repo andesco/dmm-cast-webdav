@@ -6,8 +6,10 @@
   "scripts": {
     "build": "node scripts/generate-assets.js",
     "deploy": "wrangler deploy --config wrangler.local.toml",
+    "deploy:public": "wrangler deploy --config wrangler.public.toml",
     "dev": "wrangler dev --config wrangler.local.toml",
-    "tail": "wrangler tail --config wrangler.local.toml"
+    "tail": "wrangler tail --config wrangler.local.toml",
+    "tail:public": "wrangler tail --config wrangler.public.toml"
   },
   "keywords": [
     "webdav",

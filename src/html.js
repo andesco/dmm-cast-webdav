@@ -29,7 +29,7 @@ export function layout(title, content) {
 </html>`;
 }
 
-export function statusHeader(error = null, success = null, defaultTitle = 'DMM Cast WebDAV', defaultSubtitle = 'Stream media from Debrid Media Manager Cast') {
+export function statusHeader(error = null, success = null, defaultTitle = 'DMM Cast WebDAV', defaultSubtitle = 'Casted media links from Debrid Media Manager') {
     const title = error ? 'Failed to Cast' : success || defaultTitle;
     let subtitle = error;
     if (error && error.startsWith('Failed to cast: ')) {
@@ -58,12 +58,14 @@ export function pageHeader(title, subtitle = null) {
 export function browserView(castedLinks, hostname, isSingleUser) {
     const logoutButton = `<button class="outline secondary" style="padding: 0.2rem 0.5rem; font-size: 0.8rem; margin-top: 0.25rem;" onclick="location.href='/logout'">Sign Out</button>`;
 
-    const webdavHints = `
-        <ul>
-            <li><strong>WebDAV URL:</strong> <code>${hostname}/</code></li>
-            <li><strong>username:</strong> <code>${isSingleUser ? (defaultUsername || 'your_username') : 'apitoken'}</code></li>
-            <li><strong>password:</strong> <code>${isSingleUser ? '[your_password]' : '[your API token]'}</code></li>
-        </ul>
+    const webdavHints = isSingleUser ? `
+            <p><small>WebDAV URL: <code>${hostname}/</code></small></p>
+    ` : `
+            <p>
+                <small>WebDAV URL: <code>${hostname}/</code></small><br>
+                <small>username: <code>apitoken</code></small><br>
+                <small>password: <code>[your API token]</code></small>
+            </p>
     `;
 
     return `
@@ -95,24 +97,24 @@ ${footer()}
 `;
 }
 
-export function loginPage(hostname, isSingleUser, defaultUsername) {
-    const usernameValue = isSingleUser ? (defaultUsername || '') : 'apitoken';
+export function loginPage(hostname, isSingleUser) {
+    const usernameValue = isSingleUser ? '' : 'apitoken';
     const usernameReadonly = isSingleUser ? '' : 'readonly';
-    const passwordPlaceholder = isSingleUser ? 'enter WebDAV password' : 'paste your API token';
-    const passwordLabel = isSingleUser ? 'WebDAV Password' : 'Real-Debrid API Token';
+    const passwordPlaceholder = isSingleUser ? '' : 'paste your API token';
+    const passwordLabel = isSingleUser ? 'password' : 'Real-Debrid API token';
 
     return `
 <header>
     <h2>DMM Cast WebDAV</h2>
-    <p>${isSingleUser ? 'Sign in with your WebDAV credentials.' : 'Enter your Real-Debrid token to browse your files.'}</p>
+    <p>${isSingleUser ? 'Sign in with your WebDAV credentials to view your casted media links.' : 'Enter your Real-Debrid API token to view your casted media links.'}</p>
 </header>
 
 <div id="login-section">
     <form id="login-form" method="POST" action="/login">
-        <label for="username">Username
+        <label for="username">username
             <input type="text" id="username" name="username" value="${usernameValue}" ${usernameReadonly} autocomplete="username" required>
         </label>
-        
+
         <label for="password">${passwordLabel}
             <input type="password" id="password" name="password" placeholder="${passwordPlaceholder}" autocomplete="current-password" required>
             ${!isSingleUser ? '<small><a href="https://real-debrid.com/apitoken" target="_blank">real-debrid.com/apitoken</a></small>' : ''}
@@ -121,13 +123,14 @@ export function loginPage(hostname, isSingleUser, defaultUsername) {
     </form>
 </div>
 
-<article style="margin-top: 2rem;">
-    <ul>
-        <li><strong>WebDAV URL:</strong> <code>${hostname}/</code></li>
-        <li><strong>username:</strong> <code>${isSingleUser ? (defaultUsername || 'your_username') : 'apitoken'}</code></li>
-        <li><strong>password:</strong> <code>${isSingleUser ? '[your_password]' : '[your API token]'}</code></li>
-    </ul>
-</article>
+${!isSingleUser ? `<article style="margin-top: 2rem;">
+    <p>
+        <small>WebDAV URL: <code>${hostname}/</code></small><br>
+        <small>username: <code>apitoken</code></small><br>
+        <small>password: <code>[your API token]</code></small>
+    </p>
+</article>` : ''}
+${footer()}
 `;
 }
 

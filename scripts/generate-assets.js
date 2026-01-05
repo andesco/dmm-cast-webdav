@@ -84,6 +84,22 @@ assetMetadata.forEach(({ path, mimeType, size }) => {
 });
 output += '};\n';
 
-writeFileSync(outputFile, output);
-console.log(`\nGenerated ${outputFile}`);
-console.log(`Total size: ${Math.round(output.length / 1024)}KB`);
+// Only write if content has changed to avoid triggering unnecessary rebuilds
+let shouldWrite = true;
+try {
+    const existingContent = readFileSync(outputFile, 'utf8');
+    if (existingContent === output) {
+        shouldWrite = false;
+        console.log(`\n${outputFile} is up to date, skipping write`);
+    }
+} catch (err) {
+    // File doesn't exist, write it
+}
+
+if (shouldWrite) {
+    writeFileSync(outputFile, output);
+    console.log(`\nGenerated ${outputFile}`);
+    console.log(`Total size: ${Math.round(output.length / 1024)}KB`);
+} else {
+    console.log(`Total size: ${Math.round(output.length / 1024)}KB`);
+}

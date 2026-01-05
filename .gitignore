@@ -2,6 +2,7 @@
 .env
 .env.local
 wrangler.local.toml
+wrangler.public.toml
 
 # Wrangler build artifacts
 .wrangler/
