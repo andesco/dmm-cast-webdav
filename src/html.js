@@ -59,11 +59,12 @@ export function browserView(castedLinks, hostname, isSingleUser) {
     const logoutButton = `<button class="outline secondary" style="padding: 0.2rem 0.5rem; font-size: 0.8rem; margin-top: 0.25rem;" onclick="location.href='/logout'">Sign Out</button>`;
 
     const webdavHints = `
-        <div style="margin-top: 0.5rem;">
-            <p style="margin-bottom: 0;"><small><strong>WebDAV URL:</strong> <code>${hostname}/</code></small></p>
-            <p style="margin-bottom: 0;"><small><strong>username:</strong> <code>${isSingleUser ? 'your configured username' : 'apitoken'}</code></small></p>
-            <p style="margin-bottom: 0;"><small><strong>password:</strong> <code>${isSingleUser ? 'your configured password' : '[your API token]'}</code></small></p>
-        </div>`;
+        <ul>
+            <li><strong>WebDAV URL:</strong> <code>${hostname}/</code></li>
+            <li><strong>username:</strong> <code>${isSingleUser ? (defaultUsername || 'your_username') : 'apitoken'}</code></li>
+            <li><strong>password:</strong> <code>${isSingleUser ? '[your_password]' : '[your API token]'}</code></li>
+        </ul>
+    `;
 
     return `
 ${statusHeader()}
@@ -121,7 +122,6 @@ export function loginPage(hostname, isSingleUser, defaultUsername) {
 </div>
 
 <article style="margin-top: 2rem;">
-    <h3>WebDAV for Infuse and other media players</h3>
     <ul>
         <li><strong>WebDAV URL:</strong> <code>${hostname}/</code></li>
         <li><strong>username:</strong> <code>${isSingleUser ? (defaultUsername || 'your_username') : 'apitoken'}</code></li>
