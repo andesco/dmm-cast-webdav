@@ -3,11 +3,11 @@
     <h1>DMM Cast WebDAV</h1>
 </div>
 
-
 DMM Cast WebDAV makes it quick and easy to stream media cast from [Debrid Media Manager]:
 
 * **without** Stremio add-ons; and
 * with support for [Infuse] and other media players that can stream from **`WebDAV`** and **`.strm`** files.
+
 
 ## Features
 
@@ -16,6 +16,7 @@ DMM Cast WebDAV makes it quick and easy to stream media cast from [Debrid Media 
 **Delete via WebDAV**: remove media from DMM Cast directly from [Infuse] and other media players
 
 **Favorites Artwork**: default and customizable [artwork for favorites](https://support.firecore.com/hc/en-us/articles/4405042929559-Overriding-Artwork-and-Metadata) in Infuse
+
 
 ## Deploy to Cloudflare
 
@@ -29,10 +30,13 @@ DMM Cast WebDAV makes it quick and easy to stream media cast from [Debrid Media 
 2. **Optional: Enable Single-User Mode**\
 [Workers & Pages](https://dash.cloudflare.com/?to=/:account/workers-and-pages/) → {worker name} → Settings: <nobr>Variables and Secrets:</nobr>
 
-   `RD_API_TOKEN` · https://real-debrid.com/apitoken \
+   `RD_API_TOKEN` · [real-debrid.com/apitoken][token] \
    `WEBDAV_USERNAME` \
    `WEBDAV_PASSWORD`
-   
+
+> [!IMPORTANT]
+> Your [Real-Debrid API token][token] is not meant for use with public apps, but it is required to authenticate with DMM Cast using a URL query parameter. Example: `https://dmm.com/?example={RD_API_TOKEN}`
+> Your token may appear in server access logs (Cloudflare, DMM) and network monitoring logs.
 
 3. Verify that your DMM Cast media is accessible:
    ```
@@ -40,30 +44,33 @@ DMM Cast WebDAV makes it quick and easy to stream media cast from [Debrid Media 
    ```
 4. Add the WebDAV endpoint to Infuse or other supported media player.
 
+
 ## Usage
 
 ### Default: Multi-User Mode • [dmmcast.stream]
 
-Any user can authenticate with their own Real-Debrid API token. No configuration is required.
+No configuration is required to support multiple users by default. Any user can authenticate with their own Real-Debrid API token:
 
-  - WebDAV URL: `https://{hostname}/`
   - username: `apitoken`
-  - password: `[your API token]`
+  - password: `[your API token]` · [real-debrid.com/apitoken][token]
+
+  > [!NOTE]
+  > [dmmcast.stream] and other multi-user deployments do not store tokens in the cloud; tokens are stored locally by your browser.
 
 ### Optional: Single-User Mode
-A single user can authenticates with custom credentials. Cloudflare Secrets are all required.
 
-  - WebDAV URL: `https://{hostname}/`
+All three Cloudflare Secrets must be set to restict usage to a single user authenticating with custom credentials:
+
   - username: `{WEBDAV_USERNAME}`
   - password: `{WEBDAV_PASSWORD}`
-
+  
 ### Stream Media
 
 WebDAV directories and file lists are refreshed each time you access the service, with `.strm` files created for each direct download link.
 
 ### Add Media
 
-Cast media using [Debrid Media Manager]:
+Cast media using Debrid Media Manager:
 
 - cast: <code>[debridmediamanager.com](https://debridmediamanager.com)</code>
 - manage casted links: <code>[debridmediamanager.com/stremio/manage](https://debridmediamanager.com/stremio/manage)</code>
@@ -75,8 +82,6 @@ All `.strm` files include `hash` and `imdb` metadata in the filename. These addi
 > [!TIP]
 > Allow remote videos to be deleted in your media player: \
 > Infuse → Settings → File Management: On
-
-
 
 ### Media Player Artwork
 
@@ -98,7 +103,7 @@ Use `npx wrangler secret put {VARIABLE_NAME}` to set secrets.
 
 Secret | Description |
 -------|-------------|
-`RD_API_TOKEN` | your Real-Debrid API access token
+`RD_API_TOKEN` | [Real-Debrid API token][token]
 `WEBDAV_PASSWORD` | password for basic auth
 `WEBDAV_USERNAME` | username for basic auth
 
@@ -157,4 +162,5 @@ http://{hostname}/health
 [dmmcast.stream]: https://dmmcast.stream
 [Stremio add-on]: https://debridmediamanager.com/stremio
 [Real-Debrid]: https://real-debrid.com
+[token]: https://real-debrid.com/apitoken
 [artwork]: https://github.com/andesco/dmm-cast-webdav/tree/main/public
