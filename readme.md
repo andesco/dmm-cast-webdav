@@ -29,7 +29,7 @@ DMM Cast WebDAV makes it quick and easy to stream media cast from [Debrid Media 
 2. **Optional: Enable Single-User Mode**\
 [Workers & Pages](https://dash.cloudflare.com/?to=/:account/workers-and-pages/) → {worker name} → Settings: <nobr>Variables and Secrets:</nobr>
 
-   `RD_ACCESS_TOKEN` · https://real-debrid.com/apitoken \
+   `RD_API_TOKEN` · https://real-debrid.com/apitoken \
    `WEBDAV_USERNAME` \
    `WEBDAV_PASSWORD`
    
@@ -98,7 +98,7 @@ Use `npx wrangler secret put {VARIABLE_NAME}` to set secrets.
 
 Secret | Description |
 -------|-------------|
-`RD_ACCESS_TOKEN` | your Real-Debrid API access token
+`RD_API_TOKEN` | your Real-Debrid API access token
 `WEBDAV_PASSWORD` | password for basic auth
 `WEBDAV_USERNAME` | username for basic auth
 
@@ -109,7 +109,7 @@ gh repo clone andesco/dmm-cast-webdav
 cd dmm-cast-webdav
 npm install
 
-wrangler secret put RD_ACCESS_TOKEN
+wrangler secret put RD_API_TOKEN
 wrangler secret put WEBDAV_USERNAME
 wrangler secret put WEBDAV_PASSWORD
 
@@ -136,7 +136,7 @@ http://{hostname}/health
 
 **Authentication fails:**
 - verify `WEBDAV_USERNAME` and `WEBDAV_PASSWORD` are set correctly
-- verify `RD_ACCESS_TOKEN` is set correctly
+- verify `RD_API_TOKEN` is set correctly
 - check the credentials used by your media player
 
 **Cloudflare Worker deployment fails:**
@@ -144,7 +144,7 @@ http://{hostname}/health
 
 **No media appears in WebDAV:**
 - verify you have cast media in [DMM Cast]
-- check that `RD_ACCESS_TOKEN` or your Real-Debrid API token is valid
+- check that `RD_API_TOKEN` or your Real-Debrid API token is valid
 - review Cloudflare Worker service logs: `npm run tail`
 
 [Hono]: http://hono.dev

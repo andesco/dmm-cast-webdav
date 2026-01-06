@@ -10,7 +10,7 @@ const app = new Hono();
 
 // Determine Auth Mode helper
 function isSingleUserMode(env) {
-    return !!(env.RD_ACCESS_TOKEN && env.WEBDAV_USERNAME && env.WEBDAV_PASSWORD);
+    return !!(env.RD_API_TOKEN && env.WEBDAV_USERNAME && env.WEBDAV_PASSWORD);
 }
 
 // Credential Validator
@@ -18,7 +18,7 @@ function validateCredentials(username, password, env) {
     if (isSingleUserMode(env)) {
         // Single User Mode: Check against env vars
         if (username === env.WEBDAV_USERNAME && password === env.WEBDAV_PASSWORD) {
-            return env.RD_ACCESS_TOKEN;
+            return env.RD_API_TOKEN;
         }
     } else {
         // Multi User Mode: Username must be 'apitoken', password is the token

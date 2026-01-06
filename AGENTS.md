@@ -41,7 +41,7 @@
 ### Imports & Naming
 - ES6 imports with relative paths, include `.js` extension: `import { foo } from './foo.js'`
 - Functions/variables: camelCase (`getCastedLinks`, `getDMMCastWebDAVFiles`)
-- Constants: UPPER_SNAKE_CASE (`RD_ACCESS_TOKEN`)
+- Constants: UPPER_SNAKE_CASE (`RD_API_TOKEN`)
 - Files: camelCase with `.js` extension
 
 ### Formatting & Structure
