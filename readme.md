@@ -1,21 +1,23 @@
 <div align="center">
     <p><img src="public/favorite-atv.png" width="300px"><br />
-    <h1>DMM Cast WebDAV</h1>
+    <h1>DMM Cast WebDAV<br /><a href="https://dmmcast.stream/">dmmcast.stream</a></h1>
 </div>
 
-DMM Cast WebDAV makes it quick and easy to stream media cast from [Debrid Media Manager]:
+DMM Cast WebDAV makes it quick and easy to stream media cast from <b><nobr>[Debrid Media Manager]</nobr></b>:
 
-* **without** Stremio add-ons; and
-* with support for [Infuse] and other media players that can stream from **`WebDAV`** and **`.strm`** files.
-
+* with support for **[Infuse]** and media players that can stream from **`WebDAV`** and **`.strm`** files
+* without needing Stremio add-on
 
 ## Features
 
-**DMM Cast Streaming**: stream media cast with [DMM Cast] **without** using the Stremio add-on
+**Stream without Stremio**: \
+stream media cast with [DMM Cast] without using Stremio and the Stremio add-on
 
-**Delete via WebDAV**: remove media from DMM Cast directly from [Infuse] and other media players
+**Delete via WebDAV**: \
+remove media from DMM Cast directly from [Infuse] and other media players
 
-**Favorites Artwork**: default and customizable [artwork for favorites](https://support.firecore.com/hc/en-us/articles/4405042929559-Overriding-Artwork-and-Metadata) in Infuse
+**Favorites Artwork**: \
+default and customizable [artwork for favorites](https://support.firecore.com/hc/en-us/articles/4405042929559-Overriding-Artwork-and-Metadata) in Infuse
 
 
 ## Deploy to Cloudflare
@@ -31,12 +33,13 @@ DMM Cast WebDAV makes it quick and easy to stream media cast from [Debrid Media 
 [Workers & Pages](https://dash.cloudflare.com/?to=/:account/workers-and-pages/) → {worker name} → Settings: <nobr>Variables and Secrets:</nobr>
 
    `RD_API_TOKEN` · [real-debrid.com/apitoken][token] \
+   `TORBOX_API_KEY` · [torbox.app/settings][key] \
    `WEBDAV_USERNAME` \
    `WEBDAV_PASSWORD`
 
 > [!IMPORTANT]
-> Your [Real-Debrid API token][token] is not meant for use with public apps, but it is required to authenticate with DMM Cast using a URL query parameter. Example: `https://dmm.com/?example={RD_API_TOKEN}`
-> Your token may appear in server access logs (Cloudflare, DMM) and network monitoring logs.
+> These API credentials are not meant for use with public apps, but DMM Cast requires one in the URL query parameter. They may appear in server access logs and/or network monitoring logs. For example: `https://dmm.com/?example={RD_API_TOKEN}`  \
+> Real-Debrid download links are provided by DMM Cast. TorBox download links are created on demand using the TorBox API.
 
 3. Verify that your DMM Cast media is accessible:
    ```
@@ -49,21 +52,25 @@ DMM Cast WebDAV makes it quick and easy to stream media cast from [Debrid Media 
 
 ### Default: Multi-User Mode • [dmmcast.stream]
 
-No configuration is required to support multiple users by default. Any user can authenticate with their own Real-Debrid API token:
+No configuration is required to support multiple users by default. Any user can authenticate with their own Real-Debrid API token or TorBox API key.
 
-  - username: `apitoken`
-  - password: `[your API token]` · [real-debrid.com/apitoken][token]
-
+  - username: `real-debrid`
+  - password: `[your API token][token]`
+  
+  - username: `torbox`
+  - password: `[your API key][key]`
+  
   > [!NOTE]
-  > [dmmcast.stream] and other multi-user deployments do not store tokens in the cloud; tokens are stored locally by your browser.
+  > [dmmcast.stream] and other multi-user deployments do not store API credentials in the cloud; tokens are stored locally by your browser.
 
 ### Optional: Single-User Mode
 
-All three Cloudflare Secrets must be set to restict usage to a single user authenticating with custom credentials:
+Cloudflare Secrets must be set to restrict usage to a single user authenticating with custom credentials:
 
+  - API credential: `{RD_API_TOKEN}` and/or `{TORBOX_API_KEY}`
   - username: `{WEBDAV_USERNAME}`
   - password: `{WEBDAV_PASSWORD}`
-  
+
 ### Stream Media
 
 WebDAV directories and file lists are refreshed each time you access the service, with `.strm` files created for each direct download link.
@@ -104,6 +111,7 @@ Use `npx wrangler secret put {VARIABLE_NAME}` to set secrets.
 Secret | Description |
 -------|-------------|
 `RD_API_TOKEN` | [Real-Debrid API token][token]
+`TORBOX_API_KEY` | [TorBox API key][key]
 `WEBDAV_PASSWORD` | password for basic auth
 `WEBDAV_USERNAME` | username for basic auth
 
@@ -114,7 +122,7 @@ gh repo clone andesco/dmm-cast-webdav
 cd dmm-cast-webdav
 npm install
 
-wrangler secret put RD_API_TOKEN
+wrangler secret put RD_API_TOKEN # or TORBOX_API_KEY
 wrangler secret put WEBDAV_USERNAME
 wrangler secret put WEBDAV_PASSWORD
 
@@ -141,7 +149,7 @@ http://{hostname}/health
 
 **Authentication fails:**
 - verify `WEBDAV_USERNAME` and `WEBDAV_PASSWORD` are set correctly
-- verify `RD_API_TOKEN` is set correctly
+- verify `RD_API_TOKEN` or `TORBOX_API_KEY` is set correctly
 - check the credentials used by your media player
 
 **Cloudflare Worker deployment fails:**
@@ -149,7 +157,8 @@ http://{hostname}/health
 
 **No media appears in WebDAV:**
 - verify you have cast media in [DMM Cast]
-- check that `RD_API_TOKEN` or your Real-Debrid API token is valid
+- check that `RD_API_TOKEN` is valid and set
+- check that `TORBOX_API_KEY` is valid and set
 - review Cloudflare Worker service logs: `npm run tail`
 
 [Hono]: http://hono.dev
@@ -163,4 +172,5 @@ http://{hostname}/health
 [Stremio add-on]: https://debridmediamanager.com/stremio
 [Real-Debrid]: https://real-debrid.com
 [token]: https://real-debrid.com/apitoken
+[key]: https://torbox.app/settings?section=account
 [artwork]: https://github.com/andesco/dmm-cast-webdav/tree/main/public
