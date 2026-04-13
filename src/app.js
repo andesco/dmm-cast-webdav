@@ -30,7 +30,6 @@ const PROVIDERS = {
         tokenPage: 'https://torbox.app/settings?section=account',
         cookieName: 'torbox_token',
         envTokenKey: 'TORBOX_API_KEY',
-        tokenQueryKeys: ['apiKey', 'apikey', 'api_key', 'token'],
         username: 'torbox',
         basePath: '/torbox/',
     },
@@ -102,15 +101,6 @@ function getApiPaths(provider, env) {
     }
     if (Array.isArray(provider.apiPaths) && provider.apiPaths.length > 0) return provider.apiPaths;
     return [provider.apiPath];
-}
-
-function getTokenQueryKeys(provider, env) {
-    if (provider.name === 'TorBox') {
-        const envKeys = parseCsv(env.TORBOX_TOKEN_QUERY_KEYS);
-        if (envKeys.length > 0) return envKeys;
-    }
-    if (Array.isArray(provider.tokenQueryKeys) && provider.tokenQueryKeys.length > 0) return provider.tokenQueryKeys;
-    return ['token'];
 }
 
 function normalizeLinksPayload(data) {
@@ -278,46 +268,43 @@ async function getCastedLinks(token, provider, env) {
         }
 
         const apiPaths = getApiPaths(provider, env || {});
-        const tokenQueryKeys = getTokenQueryKeys(provider, env || {});
         const errors = [];
         let data = null;
 
         for (const apiPath of apiPaths) {
-            for (const tokenKey of tokenQueryKeys) {
-                const url = new URL(`https://debridmediamanager.com/api/${apiPath}/links`);
-                url.searchParams.set(tokenKey, token);
+            const url = new URL(`https://debridmediamanager.com/api/${apiPath}/links`);
 
-                let response;
-                try {
-                    response = await fetch(url.toString());
-                } catch (error) {
-                    errors.push(`${apiPath} (${tokenKey}): ${error.message}`);
-                    continue;
-                }
-
-                if (!response.ok) {
-                    errors.push(`${apiPath} (${tokenKey}): ${response.status}`);
-                    continue;
-                }
-
-                let parsed;
-                try {
-                    parsed = await response.json();
-                } catch (error) {
-                    errors.push(`${apiPath} (${tokenKey}): invalid json`);
-                    continue;
-                }
-
-                const links = normalizeLinksPayload(parsed);
-                if (!links) {
-                    errors.push(`${apiPath} (${tokenKey}): unexpected payload`);
-                    continue;
-                }
-
-                data = links;
-                break;
+            let response;
+            try {
+                response = await fetch(url.toString(), {
+                    headers: { Authorization: `Bearer ${token}` },
+                });
+            } catch (error) {
+                errors.push(`${apiPath}: ${error.message}`);
+                continue;
             }
-            if (data) break;
+
+            if (!response.ok) {
+                errors.push(`${apiPath}: ${response.status}`);
+                continue;
+            }
+
+            let parsed;
+            try {
+                parsed = await response.json();
+            } catch (error) {
+                errors.push(`${apiPath}: invalid json`);
+                continue;
+            }
+
+            const links = normalizeLinksPayload(parsed);
+            if (!links) {
+                errors.push(`${apiPath}: unexpected payload`);
+                continue;
+            }
+
+            data = links;
+            break;
         }
 
         if (!data) {
@@ -573,10 +560,13 @@ async function handleDelete(c, provider) {
         const isTorBox = provider.name === 'TorBox';
         const payload = isTorBox
             ? { apiKey: token, imdbId, hash }
-            : { token, imdbId, hash };
+            : { imdbId, hash };
         const response = await fetch(`https://debridmediamanager.com/api/${provider.deletePath}/deletelink`, {
             method: isTorBox ? 'DELETE' : 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                ...(isTorBox ? {} : { Authorization: `Bearer ${token}` }),
+            },
             body: JSON.stringify(payload),
         });
 
