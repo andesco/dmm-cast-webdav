@@ -9,7 +9,6 @@
     "url": "https://github.com/andesco/dmm-cast-webdav.git"
   },
   "scripts": {
-    "build": "node scripts/generate-assets.js",
     "deploy": "wrangler deploy",
     "deploy:local": "wrangler deploy --config wrangler.local.toml",
     "deploy:public": "wrangler deploy --config wrangler.public.toml",
@@ -28,7 +27,6 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "@cloudflare/kv-asset-handler": "^0.4.1",
     "hono": "^4.10.2"
   },
   "devDependencies": {

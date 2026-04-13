@@ -1,75 +1,38 @@
-// Dynamic asset serving for Cloudflare Workers
-// Uses pre-bundled assets from public-assets.js
+// Static asset serving via Wrangler Assets binding (env.ASSETS)
 
-import { publicAssets, assetMetadata } from './public-assets.js';
+const ASSET_MANIFEST = [
+    { name: 'cast-atv.png',      size: 158179, mimeType: 'image/png' },
+    { name: 'cast.png',          size: 86070,  mimeType: 'image/png' },
+    { name: 'favorite-atv.png',  size: 71083,  mimeType: 'image/png' },
+    { name: 'favorite.png',      size: 121081, mimeType: 'image/png' },
+    { name: 'link-atv.png',      size: 162166, mimeType: 'image/png' },
+    { name: 'link.png',          size: 87435,  mimeType: 'image/png' },
+    { name: 'orangecast-atv.png',size: 20824,  mimeType: 'image/png' },
+    { name: 'orangecast.png',    size: 7913,   mimeType: 'image/png' },
+    { name: 'style.css',         size: 1792,   mimeType: 'text/css'  },
+];
 
-// Convert base64 to ArrayBuffer
-const base64ToBuffer = (base64) => {
-    const binaryString = atob(base64);
-    const bytes = new Uint8Array(binaryString.length);
-    for (let i = 0; i < binaryString.length; i++) {
-        bytes[i] = binaryString.charCodeAt(i);
-    }
-    return bytes.buffer;
-};
+const ASSET_MAP = Object.fromEntries(ASSET_MANIFEST.map(a => [a.name, a]));
 
-// Pre-convert bundled assets to buffers
-const assetBuffers = {};
-Object.keys(publicAssets).forEach(path => {
-    assetBuffers[path] = base64ToBuffer(publicAssets[path]);
-});
-
-// Get MIME type from file extension
-const getMimeType = (filename) => {
-    const ext = filename.split('.').pop().toLowerCase();
-    const mimeTypes = {
-        'png': 'image/png',
-        'jpg': 'image/jpeg',
-        'jpeg': 'image/jpeg',
-        'gif': 'image/gif',
-        'svg': 'image/svg+xml',
-        'css': 'text/css',
-        'xml': 'application/xml',
-        'txt': 'text/plain',
-    };
-    return mimeTypes[ext] || 'application/octet-stream';
-};
-
-// Serve file from bundled assets
+// Serve a static asset via the ASSETS binding
 export async function serveAsset(assetPath, env) {
-    const buffer = assetBuffers[assetPath];
-    const metadata = assetMetadata[assetPath];
+    const meta = ASSET_MAP[assetPath];
+    if (!meta || !env.ASSETS) return null;
 
-    if (!buffer || !metadata) {
-        return null;
-    }
-
-    return new Response(buffer, {
-        headers: {
-            'Content-Type': metadata.mimeType,
-            'Cache-Control': 'public, max-age=31536000',
-            'Content-Length': metadata.size.toString(),
-        },
-    });
+    const response = await env.ASSETS.fetch(new Request(`http://placeholder/${assetPath}`));
+    if (!response.ok) return null;
+    return response;
 }
 
-// Get list of available assets for a directory (for PROPFIND)
-export async function getAssetsInDirectory(directory, env) {
+// List assets for a directory (used by WebDAV PROPFIND)
+export async function getAssetsInDirectory(directory, _env) {
     const prefix = directory ? `${directory}/` : '';
-
-    // Use bundled assets metadata
-    return Object.keys(assetMetadata)
-        .filter(assetPath => {
-            const filename = assetPath.substring(prefix.length);
-            // Skip .DS_Store files and ensure it's in the correct directory
-            return assetPath.startsWith(prefix) &&
-                !filename.includes('/') &&
-                filename !== '.DS_Store';
-        })
-        .map(assetPath => ({
-            name: assetPath.substring(prefix.length),
-            size: assetMetadata[assetPath].size,
+    return ASSET_MANIFEST
+        .filter(a => !prefix || a.name.startsWith(prefix))
+        .map(a => ({
+            name: prefix ? a.name.slice(prefix.length) : a.name,
+            size: a.size,
             modified: '2025-12-12T00:00:00.000Z',
-            contentType: assetMetadata[assetPath].mimeType,
+            contentType: a.mimeType,
         }));
 }
