@@ -37,15 +37,17 @@ default and customizable [artwork for favorites](https://support.firecore.com/hc
    `WEBDAV_USERNAME` \
    `WEBDAV_PASSWORD`
 
-> [!IMPORTANT]
-> These API credentials are not meant for use with public apps. Real-Debrid API tokens are [sent securely](https://github.com/debridmediamanager/debrid-media-manager/pull/198) via Authorization header. TorBox API keys are still sent as a URL query parameter (example: `https://dmm.com/?example={TORBOX_API_KEY}`) and may appear in server access logs and/or network monitoring logs. \
-> Real-Debrid download links are provided by DMM Cast. TorBox download links are created on demand using the TorBox API.
-
 3. Verify that your DMM Cast media is accessible:
    ```
    https://dmm-cast-webdav.{user}.workers.dev
    ```
 4. Add the WebDAV endpoint to Infuse or other supported media player.
+
+> [!NOTE]
+> Real-Debrid API tokens are [sent securely](https://github.com/debridmediamanager/debrid-media-manager/pull/198) via Authorization header. Real-Debrid download links are provided by DMM Cast.
+
+> [!IMPORTANT]
+> TorBox API keys are still sent as a URL query parameter (example: `https://dmm.com/?example={TORBOX_API_KEY}`) and may appear in server access logs and/or network monitoring logs. TorBox download links are created on demand using the TorBox API.
 
 
 ## Usage
