@@ -76,10 +76,12 @@ No configuration is required to support multiple users by default. Any user can 
 | Real-Debrid | `/real-debrid/` |
 | TorBox | `/torbox/` |
 
-> [!WARNING]
+> [!IMPORTANT]
 > Real-Debrid remains available at the root endpoint `/` for backward
-> compatibility. The root endpoint is deprecated and may be removed in a future
-> release. New WebDAV connections should use `/real-debrid/`.
+> compatibility with existing WebDAV connections. The root WebDAV endpoint is
+> deprecated and will be removed in a future release. New and existing
+> connections should migrate to `/real-debrid/`. Opening `/` in a browser
+> redirects to the canonical Real-Debrid interface.
 
 ### Optional: Single-User Mode
 

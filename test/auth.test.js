@@ -163,7 +163,7 @@ test('invalid credentials in valid public and private modes return 401', async (
 
 test('browser login UX follows the effective mode', async (t) => {
     await t.test('public mode requests a provider API credential', async () => {
-        const response = await app.request('https://example.com/', {}, {});
+        const response = await app.request('https://example.com/real-debrid/', {}, {});
         const body = await response.text();
 
         assert.equal(response.status, 200);
@@ -172,7 +172,7 @@ test('browser login UX follows the effective mode', async (t) => {
     });
 
     await t.test('private mode requests configured WebDAV credentials', async () => {
-        const response = await app.request('https://example.com/', {}, {
+        const response = await app.request('https://example.com/real-debrid/', {}, {
             RD_API_TOKEN: 'rd-secret',
             TORBOX_API_KEY: 'torbox-secret',
             WEBDAV_USERNAME: 'webdav-user',
@@ -229,13 +229,32 @@ test('Real-Debrid has a canonical provider endpoint and a compatible legacy root
         assert.match(body, /href="\/real-debrid\/" aria-current="page"/);
     });
 
-    await t.test('keeps the deprecated root endpoint operational', async () => {
-        const response = await app.request('https://example.com/', {}, {});
-        const body = await response.text();
+    await t.test('redirects the browser root to the canonical interface', async () => {
+        const response = await app.request('https://example.com/', {
+            redirect: 'manual',
+        }, {});
 
-        assert.equal(response.status, 200);
-        assert.match(body, /WebDAV URL: <code>https:\/\/example\.com\//);
-        assert.match(body, /action="\/login"/);
+        assert.equal(response.status, 302);
+        assert.equal(response.headers.get('location'), '/real-debrid/');
+    });
+
+    await t.test('keeps legacy login and logout behavior consistent', async () => {
+        const login = await app.request('https://example.com/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: 'username=real-debrid&password=public-token',
+            redirect: 'manual',
+        }, {});
+        const logout = await app.request('https://example.com/logout', {
+            redirect: 'manual',
+        }, {});
+
+        assert.equal(login.status, 302);
+        assert.equal(login.headers.get('location'), '/');
+        assert.match(login.headers.get('set-cookie'), /^rd_token=/);
+        assert.equal(logout.status, 302);
+        assert.equal(logout.headers.get('location'), '/');
+        assert.match(logout.headers.get('set-cookie'), /^rd_token=/);
     });
 
     await t.test('supports WebDAV authentication at both paths', async () => {

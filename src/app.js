@@ -636,7 +636,12 @@ async function handleDelete(c, provider) {
 
 app.post('/login', (c) => handleLogin(c, LEGACY_ROOT_RD_PROVIDER));
 app.get('/logout', (c) => handleLogout(c, LEGACY_ROOT_RD_PROVIDER));
-app.get('/', (c) => handleBrowserView(c, LEGACY_ROOT_RD_PROVIDER));
+app.get('/', (c) => {
+    if (getProviderAuthMode(c, PROVIDERS.rd) === AUTH_MODE.MISCONFIGURED) {
+        return configurationError(c, PROVIDERS.rd, true);
+    }
+    return c.redirect(PROVIDERS.rd.basePath, 302);
+});
 
 app.get('/health', (c) => {
     const providers = getAuthModes(c.env, PROVIDERS);
