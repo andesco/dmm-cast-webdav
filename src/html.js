@@ -30,7 +30,9 @@ export function layout(title, content) {
 }
 
 function providerNav(provider) {
-    const rdActive = provider.basePath === '/' ? ' aria-current="page"' : '';
+    const rdActive = ['/', '/real-debrid/'].includes(provider.basePath)
+        ? ' aria-current="page"'
+        : '';
     const torboxActive = provider.basePath === '/torbox/' ? ' aria-current="page"' : '';
     return `
 <nav>
@@ -38,7 +40,7 @@ function providerNav(provider) {
         <li><h1 style="margin: 0; font-size: inherit;">DMM Cast WebDAV</h1></li>
     </ul>
     <ul>
-        <li><a href="/"${rdActive}>Real-Debrid</a></li>
+        <li><a href="/real-debrid/"${rdActive}>Real-Debrid</a></li>
         <li><a href="/torbox/"${torboxActive}>TorBox</a></li>
     </ul>
 </nav>`;
@@ -155,6 +157,30 @@ ${!isSingleUser ? `<article style="margin-top: 2rem;">
         <small>password: <code>[your API token]</code></small>
     </p>
 </article>` : ''}
+${footer()}
+`;
+}
+
+/**
+ * Render a provider-specific configuration error without exposing secret values.
+ */
+export function configurationErrorPage(provider) {
+    return `
+${providerNav(provider)}
+<header>
+    <span class="status-badge error">SERVICE UNAVAILABLE</span>
+    <h2>Authentication is not configured correctly</h2>
+    <p>This deployment cannot accept credentials until its private-mode configuration is complete.</p>
+</header>
+<div class="status-info">
+    <p>Configure all of the following Cloudflare Worker secrets:</p>
+    <ul>
+        <li><code>WEBDAV_USERNAME</code></li>
+        <li><code>WEBDAV_PASSWORD</code></li>
+        <li><code>${provider.envTokenKey}</code></li>
+    </ul>
+    <p><small>To use public mode instead, remove all WebDAV and provider credential secrets from the deployment.</small></p>
+</div>
 ${footer()}
 `;
 }

@@ -9,6 +9,7 @@
     "url": "https://github.com/andesco/dmm-cast-webdav.git"
   },
   "scripts": {
+    "test": "node --test",
     "deploy": "wrangler deploy",
     "deploy:local": "wrangler deploy --config wrangler.local.toml",
     "deploy:public": "wrangler deploy --config wrangler.public.toml",

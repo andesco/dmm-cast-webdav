@@ -3,6 +3,7 @@ import { serveStatic } from 'hono/cloudflare-workers';
 import { Hono } from 'hono';
 import { getCookie, setCookie } from 'hono/cookie';
 import { serveAsset, getAssetsInDirectory } from './dynamic-assets.js';
+import { AUTH_MODE, getAuthMode, getAuthModes } from './auth.js';
 
 const app = new Hono();
 
@@ -19,7 +20,7 @@ const PROVIDERS = {
         envTokenKey: 'RD_API_TOKEN',
         username: 'real-debrid',
         legacyUsernames: ['apitoken'],
-        basePath: '/',
+        basePath: '/real-debrid/',
     },
     torbox: {
         name: 'TorBox',
@@ -35,21 +36,21 @@ const PROVIDERS = {
     },
 };
 
+const LEGACY_ROOT_RD_PROVIDER = {
+    ...PROVIDERS.rd,
+    basePath: '/',
+};
+
 // --- Middleware ---
 
-// Determine Auth Mode helper
-function isSingleUserMode(env, provider) {
-    return !!(env[provider.envTokenKey] && env.WEBDAV_USERNAME && env.WEBDAV_PASSWORD);
-}
-
 // Credential Validator
-function validateCredentials(username, password, env, provider) {
-    if (isSingleUserMode(env, provider)) {
+function validateCredentials(username, password, env, provider, authMode) {
+    if (authMode === AUTH_MODE.PRIVATE) {
         // Single User Mode: Check against env vars
         if (username === env.WEBDAV_USERNAME && password === env.WEBDAV_PASSWORD) {
             return env[provider.envTokenKey];
         }
-    } else {
+    } else if (authMode === AUTH_MODE.PUBLIC) {
         // Multi User Mode: Username must match provider username (or legacy aliases), password is the token
         const validUsernames = [provider.username, ...(provider.legacyUsernames || [])];
         if (validUsernames.includes(username)) {
@@ -60,7 +61,9 @@ function validateCredentials(username, password, env, provider) {
 }
 
 // Token Extractor - Checks Cookie then Basic Auth
-async function extractToken(c, provider) {
+async function extractToken(c, provider, authMode) {
+    if (authMode === AUTH_MODE.MISCONFIGURED) return null;
+
     // 1. Try Cookie (Browser Session)
     const cookieToken = getCookie(c, provider.cookieName);
     if (cookieToken) return cookieToken;
@@ -76,7 +79,7 @@ async function extractToken(c, provider) {
             if (colonIndex !== -1) {
                 const user = credentials.substring(0, colonIndex);
                 const pass = credentials.substring(colonIndex + 1);
-                return validateCredentials(user, pass, c.env, provider);
+                return validateCredentials(user, pass, c.env, provider, authMode);
             }
         } catch (e) {
             console.error('Basic Auth decode error:', e);
@@ -87,7 +90,16 @@ async function extractToken(c, provider) {
 }
 
 
-import { layout, loginPage, browserView, statusHeader, pageHeader, footer, formatBytes } from './html.js';
+import {
+    layout,
+    loginPage,
+    browserView,
+    configurationErrorPage,
+    statusHeader,
+    pageHeader,
+    footer,
+    formatBytes,
+} from './html.js';
 
 function parseCsv(value) {
     if (!value) return [];
@@ -351,13 +363,32 @@ async function getCastedLinks(token, provider, env) {
 
 // --- Shared Handler Functions ---
 
+function getProviderAuthMode(c, provider) {
+    return getAuthMode(c.env, provider, PROVIDERS);
+}
+
+function configurationError(c, provider, renderHtml = false) {
+    if (renderHtml) {
+        return c.html(
+            layout('Configuration Error', configurationErrorPage(provider)),
+            503
+        );
+    }
+    return c.text('Service unavailable: authentication is not configured correctly.', 503);
+}
+
 async function handleLogin(c, provider) {
+    const authMode = getProviderAuthMode(c, provider);
+    if (authMode === AUTH_MODE.MISCONFIGURED) {
+        return configurationError(c, provider, true);
+    }
+
     try {
         const body = await c.req.parseBody();
         const username = body.username;
         const password = body.password;
 
-        const token = validateCredentials(username, password, c.env, provider);
+        const token = validateCredentials(username, password, c.env, provider, authMode);
 
         if (token) {
             // Success: Set cookie
@@ -373,7 +404,10 @@ async function handleLogin(c, provider) {
             });
             return c.redirect(provider.basePath);
         } else {
-            return c.html(layout('Login Failed', `<h2>Login Failed</h2><p>Invalid credentials.</p><a href="${provider.basePath}">Try Again</a>`));
+            return c.html(
+                layout('Login Failed', `<h2>Login Failed</h2><p>Invalid credentials.</p><a href="${provider.basePath}">Try Again</a>`),
+                401
+            );
         }
     } catch (e) {
         return c.text('Bad Request', 400);
@@ -392,9 +426,14 @@ function handleLogout(c, provider) {
 }
 
 async function handleBrowserView(c, provider) {
+    const authMode = getProviderAuthMode(c, provider);
+    if (authMode === AUTH_MODE.MISCONFIGURED) {
+        return configurationError(c, provider, true);
+    }
+
     const token = getCookie(c, provider.cookieName);
     const hostname = new URL(c.req.url).origin;
-    const singleUser = isSingleUserMode(c.env, provider);
+    const singleUser = authMode === AUTH_MODE.PRIVATE;
 
     if (!token) {
         return c.html(layout('Sign In', loginPage(hostname, singleUser, provider)));
@@ -452,7 +491,12 @@ async function getDMMCastWebDAVFiles(token, provider, env) {
 }
 
 async function handlePropfind(c, provider) {
-    const token = await extractToken(c, provider);
+    const authMode = getProviderAuthMode(c, provider);
+    if (authMode === AUTH_MODE.MISCONFIGURED) {
+        return configurationError(c, provider);
+    }
+
+    const token = await extractToken(c, provider, authMode);
     if (!token) {
         return new Response('Unauthorized', {
             status: 401,
@@ -503,6 +547,11 @@ async function handlePropfind(c, provider) {
 }
 
 async function handleGetFile(c, provider) {
+    const authMode = getProviderAuthMode(c, provider);
+    if (authMode === AUTH_MODE.MISCONFIGURED) {
+        return configurationError(c, provider);
+    }
+
     const { filename: rawFilename } = c.req.param();
     let filename = rawFilename;
     try {
@@ -517,7 +566,7 @@ async function handleGetFile(c, provider) {
     }
 
     if (filename.endsWith('.strm')) {
-        const token = await extractToken(c, provider);
+        const token = await extractToken(c, provider, authMode);
         if (!token) {
             return new Response('Unauthorized', {
                 status: 401,
@@ -546,10 +595,15 @@ async function handleGetFile(c, provider) {
 }
 
 async function handleDelete(c, provider) {
+    const authMode = getProviderAuthMode(c, provider);
+    if (authMode === AUTH_MODE.MISCONFIGURED) {
+        return configurationError(c, provider);
+    }
+
     const fullPath = new URL(c.req.url).pathname;
     const filename = decodeURIComponent(fullPath.replace(provider.basePath, ''));
 
-    const token = await extractToken(c, provider);
+    const token = await extractToken(c, provider, authMode);
     if (!token) return c.text('Unauthorized', 401);
 
     try {
@@ -578,21 +632,25 @@ async function handleDelete(c, provider) {
 }
 
 
-// --- Real-Debrid Routes (root /) ---
+// --- Legacy Real-Debrid Browser Routes (root /) ---
 
-app.post('/login', (c) => handleLogin(c, PROVIDERS.rd));
-app.get('/logout', (c) => handleLogout(c, PROVIDERS.rd));
-app.get('/', (c) => handleBrowserView(c, PROVIDERS.rd));
+app.post('/login', (c) => handleLogin(c, LEGACY_ROOT_RD_PROVIDER));
+app.get('/logout', (c) => handleLogout(c, LEGACY_ROOT_RD_PROVIDER));
+app.get('/', (c) => handleBrowserView(c, LEGACY_ROOT_RD_PROVIDER));
 
 app.get('/health', (c) => {
+    const providers = getAuthModes(c.env, PROVIDERS);
+    const misconfigured = Object.values(providers).includes(AUTH_MODE.MISCONFIGURED);
+
     return c.json({
-        status: 'ok',
+        status: misconfigured ? 'misconfigured' : 'ok',
+        providers,
         uptime: 0,
         timestamp: new Date().toISOString(),
-    });
+    }, misconfigured ? 503 : 200);
 });
 
-app.on(['PROPFIND'], '/', (c) => handlePropfind(c, PROVIDERS.rd));
+app.on(['PROPFIND'], '/', (c) => handlePropfind(c, LEGACY_ROOT_RD_PROVIDER));
 
 // --- Static File Serving ---
 app.get('/style.css', async (c) => {
@@ -606,8 +664,17 @@ app.get('/public/*', async (c) => {
     return response || c.text(`File not found: ${path}`, 404);
 });
 
-// --- TorBox Routes (/torbox/) ---
-// Registered before RD catch-all routes to prevent /:filename and /* from intercepting /torbox/* paths
+// --- Provider Routes ---
+// Registered before legacy root catch-all routes so provider paths are not interpreted as filenames
+
+app.all('/real-debrid', (c) => c.redirect('/real-debrid/', 301));
+
+app.post('/real-debrid/login', (c) => handleLogin(c, PROVIDERS.rd));
+app.get('/real-debrid/logout', (c) => handleLogout(c, PROVIDERS.rd));
+app.get('/real-debrid/', (c) => handleBrowserView(c, PROVIDERS.rd));
+app.on(['PROPFIND'], '/real-debrid/', (c) => handlePropfind(c, PROVIDERS.rd));
+app.get('/real-debrid/:filename', (c) => handleGetFile(c, PROVIDERS.rd));
+app.on(['DELETE'], '/real-debrid/*', (c) => handleDelete(c, PROVIDERS.rd));
 
 app.all('/torbox', (c) => c.redirect('/torbox/', 301));
 
@@ -618,9 +685,10 @@ app.on(['PROPFIND'], '/torbox/', (c) => handlePropfind(c, PROVIDERS.torbox));
 app.get('/torbox/:filename', (c) => handleGetFile(c, PROVIDERS.torbox));
 app.on(['DELETE'], '/torbox/*', (c) => handleDelete(c, PROVIDERS.torbox));
 
-// --- RD Catch-all Routes (must come after /torbox/ routes) ---
+// --- Deprecated Real-Debrid Root Routes ---
+// Keep these after explicit provider routes until root endpoint compatibility is removed
 
-app.get('/:filename', (c) => handleGetFile(c, PROVIDERS.rd));
-app.on(['DELETE'], '/*', (c) => handleDelete(c, PROVIDERS.rd));
+app.get('/:filename', (c) => handleGetFile(c, LEGACY_ROOT_RD_PROVIDER));
+app.on(['DELETE'], '/*', (c) => handleDelete(c, LEGACY_ROOT_RD_PROVIDER));
 
 export default app;

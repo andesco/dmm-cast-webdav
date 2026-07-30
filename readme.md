@@ -37,9 +37,13 @@ default and customizable [artwork for favorites](https://support.firecore.com/hc
    `WEBDAV_USERNAME` \
    `WEBDAV_PASSWORD`
 
+   Set both WebDAV secrets and a credential for every provider you want to
+   enable. Partial private-mode configuration returns `503 Service Unavailable`
+   and never falls back to public mode.
+
 3. Verify that your DMM Cast media is accessible:
    ```
-   https://dmm-cast-webdav.{user}.workers.dev
+   https://dmm-cast-webdav.{user}.workers.dev/real-debrid/
    ```
 4. Add the WebDAV endpoint to Infuse or other supported media player.
 
@@ -65,6 +69,18 @@ No configuration is required to support multiple users by default. Any user can 
   > [!NOTE]
   > [dmmcast.stream] and other multi-user deployments do not store API credentials in the cloud; tokens are stored locally by your browser.
 
+### Provider Endpoints
+
+| Provider | WebDAV endpoint |
+|----------|-----------------|
+| Real-Debrid | `/real-debrid/` |
+| TorBox | `/torbox/` |
+
+> [!WARNING]
+> Real-Debrid remains available at the root endpoint `/` for backward
+> compatibility. The root endpoint is deprecated and may be removed in a future
+> release. New WebDAV connections should use `/real-debrid/`.
+
 ### Optional: Single-User Mode
 
 Cloudflare Secrets must be set to restrict usage to a single user authenticating with custom credentials:
@@ -72,6 +88,20 @@ Cloudflare Secrets must be set to restrict usage to a single user authenticating
   - API credential: `{RD_API_TOKEN}` and/or `{TORBOX_API_KEY}`
   - username: `{WEBDAV_USERNAME}`
   - password: `{WEBDAV_PASSWORD}`
+
+Authentication has three effective states for each provider:
+
+| Configuration | Effective mode |
+|---------------|----------------|
+| No WebDAV or provider credential secrets | Public |
+| Both WebDAV secrets and the provider credential | Private |
+| Any other combination | Misconfigured (`503 Service Unavailable`) |
+
+`WEBDAV_USERNAME` and `WEBDAV_PASSWORD` are shared by Real-Debrid and TorBox.
+When private mode is configured, a provider without its corresponding
+`RD_API_TOKEN` or `TORBOX_API_KEY` is disabled with a `503`; it does not become
+public. To run both providers privately, configure all four secrets. Public mode
+is enabled only when none of these secrets are configured.
 
 ### Stream Media
 
@@ -142,10 +172,18 @@ http://{hostname}/health
 ```json
 {
   "status": "ok",
+  "providers": {
+    "rd": "public",
+    "torbox": "public"
+  },
   "uptime": 0,
   "timestamp": "2025-12-18T06:00:00.000Z"
 }
 ```
+
+The provider modes are `public`, `private`, or `misconfigured`. The endpoint
+returns `503 Service Unavailable` with `status: "misconfigured"` if either
+provider is not safely configured. Secret values are never included.
 
 ### Common Issues
 
